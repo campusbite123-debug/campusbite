@@ -6,6 +6,8 @@ node_modules/
 # Expo
 .expo/
 dist/
+dist-native/
+dist-e2e/
 web-build/
 expo-env.d.ts
 
@@ -30,8 +32,14 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
+# Environment files stay local; only blank templates belong in the repository.
+.env*
+!.env.example
+!.env.admin.example
+.npm-cache/
+.tmp/
+test-results/
+playwright-report/
 
 # typescript
 *.tsbuildinfo
