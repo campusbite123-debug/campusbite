@@ -6,6 +6,7 @@ import { errorMessage, formatDate, isActive, money, time } from '@/utils/domain'
 import { colors as c } from '@/constants/theme';
 import { Page } from '@/components/shell';
 import { OrderDetail } from '@/components/order-detail';
+import { OrderConfirmation } from '@/components/order-confirmation';
 import {
   Button,
   Empty,
@@ -119,15 +120,26 @@ export default function Orders() {
         </View>
       )}
       <Sheet
-        visible={!!order}
+        visible={!!order && params.placed !== 'true'}
         onClose={() => {
           setSelected(null);
           router.setParams({ id: '', placed: '' });
         }}
-        title={params.placed === 'true' ? 'You’re on the list! 🎉' : 'Your digital receipt'}
+        title="Your digital receipt"
       >
-        {order && <OrderDetail key={order.id} order={order} data={data} />}
+        {order && params.placed !== 'true' && (
+          <OrderDetail key={order.id} order={order} data={data} />
+        )}
       </Sheet>
+      {order && params.placed === 'true' && (
+        <OrderConfirmation
+          order={order}
+          data={data}
+          onClose={() => setSelected(null)}
+          onTrack={() => router.setParams({ placed: '' })}
+          onBrowse={() => router.replace('/menu')}
+        />
+      )}
     </Page>
   );
 }

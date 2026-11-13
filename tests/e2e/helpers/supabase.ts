@@ -221,8 +221,8 @@ export async function mockSupabase(context: BrowserContext) {
               order_items: o.items,
               order_status_history: o.history,
               payments: o.payment_collected
-                ? [{ amount: o.total, collected_at: o.collected_at }]
-                : [],
+                ? { amount: o.total, collected_at: o.collected_at }
+                : null,
             }));
             break;
           default:

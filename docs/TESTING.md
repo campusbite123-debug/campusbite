@@ -18,6 +18,8 @@ Coverage:
 
 - Shared email/password login, blank credentials, masked password and no role chooser/admin hints.
 - Signup without a student ID, a generated internal account reference, and a profile without student ID fields.
+- Desktop and mobile order confirmation with pickup code, time/location, itemized receipt and a working Track my order action.
+- Order loading with a null payment before pickup and a payment object after cash collection; browser fixtures match the database's one-to-one payment relation.
 - Wrong password rejection, signed-out route protection, old demo-session rejection and student/admin routing through the same form.
 - Student checkout → administrator preparation → wrong-code rejection → paid pickup/revenue.
 - Mobile navigation, search, details, cart and student restrictions on admin routes.

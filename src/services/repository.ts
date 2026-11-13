@@ -14,6 +14,13 @@ import type {
 import { supabase } from './supabase';
 import { dayKey, mealSchema } from '@/utils/domain';
 
+type OrderRow = Omit<Order, 'items' | 'history' | 'payment_collected' | 'collected_at'> & {
+  order_items: Order['items'];
+  order_status_history: Order['history'];
+  // payments.order_id is unique, so this nested relation is one nullable object.
+  payments: { collected_at: string } | null;
+};
+
 const db = () => {
   if (!supabase) throw new Error('Sign-in is currently unavailable. Please contact the canteen.');
   return supabase;
@@ -69,14 +76,12 @@ export async function loadSnapshot(user: SessionUser): Promise<Snapshot> {
     slots: slots as Slot[],
     profiles: profiles as Profile[],
     settings: settings as Settings,
-    orders: orders.map((o) => ({
+    orders: orders.map((o: OrderRow) => ({
       ...o,
       items: o.order_items,
-      history: o.order_status_history.sort((a: any, b: any) =>
-        a.created_at.localeCompare(b.created_at),
-      ),
-      payment_collected: o.payments.length > 0,
-      collected_at: o.payments[0]?.collected_at,
+      history: o.order_status_history.sort((a, b) => a.created_at.localeCompare(b.created_at)),
+      payment_collected: Boolean(o.payments),
+      collected_at: o.payments?.collected_at,
     })) as Order[],
   };
 }

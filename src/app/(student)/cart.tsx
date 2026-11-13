@@ -60,7 +60,8 @@ export default function Cart() {
       clear();
       await AsyncStorage.removeItem(storageKey);
       await client.invalidateQueries({ queryKey: ['canteen'] });
-      toast('Pre-order confirmed! Your receipt is ready.');
+      // The confirmation replaces earlier cart notices and keeps its actions unobstructed.
+      toast('');
       router.replace({ pathname: '/orders', params: { id, placed: 'true' } });
     } catch (e) {
       setFailure(errorMessage(e));

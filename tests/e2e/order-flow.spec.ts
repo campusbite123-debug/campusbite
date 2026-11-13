@@ -73,9 +73,21 @@ test('student pre-order → admin kitchen → verified pickup and revenue', asyn
   await expect(page.getByText('Total to pay at pickup')).toBeVisible();
   await page.getByRole('button', { name: '9:30 AM', exact: true }).click();
   await page.getByRole('button', { name: 'Confirm pre-order', exact: true }).click();
-  await expect(page.getByText('You’re on the list! 🎉')).toBeVisible();
+  await expect(page.getByText('Your pre-order is in!', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Added to your bag. Good choice!', { exact: true }),
+  ).not.toBeVisible();
   const code = (await page.getByText(/^[A-F0-9]{8}$/).textContent())!.trim();
   const orderNumber = (await page.getByText(/^CC-/).last().textContent())!.trim();
+  await expect(page.getByText('Payment due at pickup', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Track my order', exact: true })).toBeVisible();
+  await page.screenshot({ path: 'test-results/order-confirmation-desktop.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('button', { name: 'Track my order', exact: true })).toBeVisible();
+  await page.screenshot({ path: 'test-results/order-confirmation-mobile.png', fullPage: true });
+  await page.getByRole('button', { name: 'Track my order', exact: true }).click();
+  await expect(page.getByText('Your digital receipt', { exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 1440, height: 1050 });
   await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
   await signOut(page);
   await signIn(page, 'admin');
@@ -169,7 +181,7 @@ test('an open daily-menu editor cannot overwrite a new student reservation', asy
     await student.getByRole('link', { name: 'Cart', exact: true }).click();
     await student.getByRole('button', { name: '9:30 AM', exact: true }).click();
     await student.getByRole('button', { name: 'Confirm pre-order', exact: true }).click();
-    await expect(student.getByText('You’re on the list! 🎉')).toBeVisible();
+    await expect(student.getByText('Your pre-order is in!', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Save daily menu', exact: true }).click();
     await expect(
       page.getByText('Stock changed while you were editing. Refresh and try again.', {
