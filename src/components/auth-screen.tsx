@@ -40,7 +40,7 @@ export function AuthScreen({
           ? z.object({ email: z.email('Enter a valid email address.') })
           : loginSchema,
     ),
-    defaultValues: { full_name: '', student_id: '', email: '', password: '', confirm_password: '' },
+    defaultValues: { full_name: '', email: '', password: '', confirm_password: '' },
   });
   async function submit(values: any) {
     setError('');
@@ -69,7 +69,6 @@ export function AuthScreen({
   const fields = register
     ? [
         ['full_name', 'Full name', 'Juan Dela Cruz'],
-        ['student_id', 'Student ID', '2026-00142'],
         ['email', 'Campus email', 'you@campus.edu.ph'],
         ['password', 'Password', 'At least 8 characters'],
         ['confirm_password', 'Confirm password', 'Re-enter your password'],

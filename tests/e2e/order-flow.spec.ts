@@ -4,6 +4,57 @@ let api: Awaited<ReturnType<typeof mockSupabase>>;
 test.beforeEach(async ({ context }) => {
   api = await mockSupabase(context);
 });
+
+test('student signup and profile no longer request or display a student ID', async ({ page }) => {
+  await page.route('https://canteen.test/auth/v1/signup**', (route) =>
+    route.fulfill({
+      status: 200,
+      headers: {
+        'access-control-allow-origin': '*',
+        'access-control-allow-headers': '*',
+        'access-control-allow-methods': 'POST,OPTIONS',
+      },
+      json: {
+        id: '40000000-0000-4000-8000-000000000099',
+        email: 'new-student@school.test',
+        aud: 'authenticated',
+        role: 'authenticated',
+        created_at: FIXED_TIME,
+        user_metadata: { full_name: 'New Student' },
+        identities: [],
+      },
+    }),
+  );
+  await page.goto('/register');
+  await expect(page.getByText('Join the table.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Student ID', exact: true })).toHaveCount(0);
+  await page.getByRole('textbox', { name: 'Full name', exact: true }).fill('New Student');
+  await page
+    .getByRole('textbox', { name: 'Campus email', exact: true })
+    .fill('new-student@school.test');
+  await page.getByRole('textbox', { name: 'Password', exact: true }).fill('new-student-password');
+  await page
+    .getByRole('textbox', { name: 'Confirm password', exact: true })
+    .fill('new-student-password');
+  const signup = page.waitForRequest(
+    (request) => request.url().includes('/auth/v1/signup') && request.method() === 'POST',
+  );
+  await page.getByRole('button', { name: /^Create student account/ }).click();
+  const submitted = (await signup).postDataJSON();
+  expect(submitted.data.full_name).toBe('New Student');
+  // Preserve compatibility with the existing SQL constraint without asking students for an ID.
+  expect(submitted.data.student_id).toMatch(/^[A-F0-9]{30}$/);
+  expect(submitted.data).not.toHaveProperty('role');
+  await expect(page).toHaveURL(/\/login/);
+  await expect(
+    page.getByText('Check your email to confirm your account, then sign in.'),
+  ).toBeVisible();
+  await signIn(page, 'student');
+  await page.getByRole('link', { name: 'Profile', exact: true }).click();
+  await expect(page.getByText('A little about you.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Student ID', exact: true })).toHaveCount(0);
+  await expect(page.getByText('2026-00142', { exact: true })).toHaveCount(0);
+});
 test('student pre-order → admin kitchen → verified pickup and revenue', async ({ page }) => {
   await page.clock.install({ time: new Date('2026-11-13T01:00:00Z') });
   const errors: string[] = [];

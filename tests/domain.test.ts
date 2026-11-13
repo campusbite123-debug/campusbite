@@ -25,17 +25,19 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 describe('registration and cart', () => {
-  it('requires valid student IDs, email and matching strong-enough passwords', () => {
+  it('registers without a student ID and requires a name, email and matching passwords', () => {
     const valid = {
       full_name: 'Alex Reyes',
-      student_id: '2026-00142',
       email: 'alex@campus.edu.ph',
       password: 'schooltime123',
       confirm_password: 'schooltime123',
     };
     expect(registrationSchema.safeParse(valid).success).toBe(true);
+    expect(registrationSchema.parse({ ...valid, student_id: 'ignored' })).not.toHaveProperty(
+      'student_id',
+    );
     for (const invalid of [
-      { student_id: 'x' },
+      { full_name: '' },
       { email: 'bad' },
       { confirm_password: 'other' },
       { password: 'tiny' },

@@ -112,10 +112,6 @@ function timeInHours(slot: Slot, open: string, close: string) {
 export const registrationSchema = z
   .object({
     full_name: z.string().trim().min(2, 'Enter your full name.').max(100),
-    student_id: z
-      .string()
-      .trim()
-      .regex(/^[A-Za-z0-9-]{4,30}$/, 'Use 4–30 letters, numbers or dashes.'),
     email: z.email('Enter a valid email address.'),
     password: z.string().min(8, 'Use at least 8 characters.').max(128),
     confirm_password: z.string(),
@@ -149,11 +145,10 @@ export function errorMessage(error: unknown) {
 }
 export const csv = (orders: Order[]) =>
   [
-    ['Order', 'Student', 'Student ID', 'Created', 'Pickup', 'Status', 'Total PHP', 'Collected PHP'],
+    ['Order', 'Student', 'Created', 'Pickup', 'Status', 'Total PHP', 'Collected PHP'],
     ...orders.map((o) => [
       o.order_number,
       o.customer_name,
-      o.student_id,
       o.created_at,
       o.pickup_at,
       o.status,

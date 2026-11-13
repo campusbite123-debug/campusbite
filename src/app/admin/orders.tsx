@@ -19,9 +19,7 @@ export default function AdminOrders() {
           .filter(
             (o) =>
               (filter === 'All' || o.status === filter) &&
-              `${o.order_number} ${o.customer_name} ${o.student_id}`
-                .toLowerCase()
-                .includes(search.toLowerCase()),
+              `${o.order_number} ${o.customer_name}`.toLowerCase().includes(search.toLowerCase()),
           )
           .sort((a, b) => b.created_at.localeCompare(a.created_at));
         const order = data.orders.find((o) => o.id === selected);
@@ -34,7 +32,7 @@ export default function AdminOrders() {
             <Search
               value={search}
               onChangeText={setSearch}
-              placeholder="Search order number, student name or ID"
+              placeholder="Search order number or student name"
             />
             <ScrollView
               horizontal
@@ -65,7 +63,7 @@ export default function AdminOrders() {
                           {o.order_number}
                         </T>
                         <T muted style={{ fontSize: 11, marginTop: 5 }}>
-                          {o.customer_name} · {o.student_id}
+                          {o.customer_name}
                         </T>
                       </View>
                       <StatusBadge status={o.status} />

@@ -39,12 +39,11 @@ export default function Profile() {
                   {data.profiles.find((p) => p.id === user?.id)?.full_name ?? user?.full_name}
                 </T>
                 <T muted style={{ fontSize: 12, marginTop: 6 }}>
-                  {user?.student_id} · Student account
+                  Student account
                 </T>
               </View>
             </View>
             <Input label="Full name" value={name} onChangeText={setName} />
-            <Input label="Student ID" value={user?.student_id} editable={false} />
             <Input label="Email address" value={user?.email} editable={false} />
             <Button
               loading={busy}

@@ -259,7 +259,7 @@ export function Shell({ admin = false }: { admin?: boolean }) {
                     {user.full_name}
                   </T>
                   <T muted style={{ fontSize: 10, marginTop: 2 }}>
-                    {admin ? 'Canteen administrator' : user.student_id}
+                    {admin ? 'Canteen administrator' : 'Student account'}
                   </T>
                 </View>
               )}

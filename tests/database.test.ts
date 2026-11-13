@@ -171,7 +171,7 @@ describe('actual PostgreSQL migrations and RPCs', () => {
     expect(Number(popular.rows[0].quantity)).toBe(2);
     expect(await scalar('select count(*)::int from public.orders')).toBe(0);
   });
-  it('ignores public registration role metadata and enforces unique Student IDs', async () => {
+  it('ignores public registration role metadata and enforces unique internal account references', async () => {
     expect(await scalar('select role from public.user_roles where user_id=auth.uid()')).toBe(
       'CUSTOMER',
     );

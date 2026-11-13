@@ -37,7 +37,7 @@ No hosted project credentials were supplied during development. Hosted authentic
 
 ## Create an administrator in the terminal
 
-Public signup always creates a **CUSTOMER**. Staff and students use the **same login page**; the database role determines the workspace. Administrator details are not advertised in that page or in the student directory.
+Public signup asks for a full name, email, password and password confirmation, and always creates a **CUSTOMER**. No student ID is required. Staff and students use the **same login page**; the database role determines the workspace. Administrator details are not advertised in that page or in the student directory.
 
 After applying migration 005:
 

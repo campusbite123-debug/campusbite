@@ -143,9 +143,7 @@ export function OrderDetail({
       <View style={{ gap: 11 }}>
         <View style={s.row}>
           <Icon name="account-outline" color={c.orange} size={18} />
-          <T style={{ fontSize: 12 }}>
-            {order.customer_name} · {order.student_id}
-          </T>
+          <T style={{ fontSize: 12 }}>{order.customer_name}</T>
         </View>
         <View style={s.row}>
           <Icon name="clock-outline" color={c.orange} size={18} />

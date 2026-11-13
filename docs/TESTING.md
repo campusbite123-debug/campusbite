@@ -17,6 +17,7 @@ In this workspace, set `$env:PLAYWRIGHT_BROWSERS_PATH = 'D:\Campus Canteen Syste
 Coverage:
 
 - Shared email/password login, blank credentials, masked password and no role chooser/admin hints.
+- Signup without a student ID, a generated internal account reference, and a profile without student ID fields.
 - Wrong password rejection, signed-out route protection, old demo-session rejection and student/admin routing through the same form.
 - Student checkout → administrator preparation → wrong-code rejection → paid pickup/revenue.
 - Mobile navigation, search, details, cart and student restrictions on admin routes.
@@ -43,7 +44,7 @@ Authentication and access:
 - [ ] Correct student credentials open Home; correct terminal-provisioned staff credentials open Dashboard using that same form.
 - [ ] Wrong passwords do not open a workspace. Logout and expired sessions lock private routes.
 - [ ] A customer navigating to `/admin` returns to Home; a signed-out user returns to Login.
-- [ ] Invalid or duplicate student IDs, bad email and mismatched passwords show errors. Every public signup has CUSTOMER role even if submitted metadata requests ADMIN.
+- [ ] Signup requires only a full name, email, password and confirmation. Student ID is absent from signup, profile, account/order displays and CSV reports. Invalid names/emails and mismatched passwords show errors. Every public signup has CUSTOMER role even if submitted metadata requests ADMIN.
 - [ ] Registration and recovery email links work with allowed redirects. Session persistence works after relaunch.
 - [ ] Student/admin application sessions cannot call `terminal_provision_admin`, write roles directly, or create administrators through any UI.
 - [ ] Staff accounts do not appear in Students. Customers cannot read another user's profile, orders, items or payments.

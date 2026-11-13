@@ -4,6 +4,7 @@ import { AppState, Platform } from 'react-native';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Portal, Snackbar } from 'react-native-paper';
 import * as Linking from 'expo-linking';
+import * as Crypto from 'expo-crypto';
 import { supabase, configurationError } from '@/services/supabase';
 import { loadSnapshot, subscribeChanges } from '@/services/repository';
 import { errorMessage, registrationSchema } from '@/utils/domain';
@@ -128,14 +129,19 @@ function AuthProvider({ children }: React.PropsWithChildren) {
       email: clean.email,
       password: clean.password,
       options: {
-        data: { full_name: clean.full_name, student_id: clean.student_id.toUpperCase() },
+        data: {
+          full_name: clean.full_name,
+          // Existing databases require this legacy column. Store an internal reference,
+          // never a student-supplied ID, so signup needs no database migration.
+          student_id: Crypto.randomUUID().replaceAll('-', '').slice(0, 30).toUpperCase(),
+        },
         emailRedirectTo: Linking.createURL('/login'),
       },
     });
     if (error)
       throw new Error(
         error.message.includes('Database error')
-          ? 'Registration failed. Your student ID may already be registered; check your details or contact the canteen.'
+          ? 'Registration failed. Check your details or contact the canteen.'
           : error.message,
       );
     if (data.session) await refreshUser();
