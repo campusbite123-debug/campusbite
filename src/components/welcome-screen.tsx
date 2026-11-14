@@ -7,7 +7,8 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors as c, fonts } from '@/constants/theme';
 import { useLayout } from '@/hooks/use-layout';
-import { Icon, T } from './ui';
+import { T } from './ui';
+import { BrandMark } from './brand-mark';
 
 export function WelcomeScreen() {
   const { width, height, isPhone } = useLayout();
@@ -62,7 +63,7 @@ export function WelcomeScreen() {
             style={styles.brand}
           >
             <View style={styles.brandIcon}>
-              <Icon name="silverware-fork-knife" size={24} color={c.white} />
+              <BrandMark size={48} />
             </View>
             <T style={styles.wordmark}>
               campus<T style={styles.wordmark}>bite</T>
@@ -86,7 +87,7 @@ export function WelcomeScreen() {
             </T>
             <T style={styles.description}>Your campus favorites, without the wait.</T>
           </View>
-          <View style={{ width: '100%', maxWidth: 360, gap: 8 }}>
+          <View style={styles.actions}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Sign in"
@@ -136,6 +137,7 @@ const styles = StyleSheet.create({
   },
   headline: { fontFamily: fonts.display, letterSpacing: -1.3, color: c.white },
   description: { maxWidth: 310, color: '#FFF4E5', fontSize: 14, lineHeight: 23, marginTop: 22 },
+  actions: { width: '100%', maxWidth: 360, alignSelf: 'center', gap: 8 },
   signIn: {
     minHeight: 54,
     paddingVertical: 15,

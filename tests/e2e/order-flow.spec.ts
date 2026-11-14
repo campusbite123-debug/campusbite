@@ -40,7 +40,9 @@ test('student signup and profile no longer request or display a student ID', asy
     (request) => request.url().includes('/auth/v1/signup') && request.method() === 'POST',
   );
   await page.getByRole('button', { name: /^Create student account/ }).click();
-  const submitted = (await signup).postDataJSON();
+  const signupRequest = await signup;
+  expect(new URL(signupRequest.url()).searchParams.has('redirect_to')).toBe(false);
+  const submitted = signupRequest.postDataJSON();
   expect(submitted.data.full_name).toBe('New Student');
   // Preserve compatibility with the existing SQL constraint without asking students for an ID.
   expect(submitted.data.student_id).toMatch(/^[A-F0-9]{30}$/);

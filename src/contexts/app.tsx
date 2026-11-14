@@ -162,7 +162,8 @@ function AuthProvider({ children }: React.PropsWithChildren) {
           // never a student-supplied ID, so signup needs no database migration.
           student_id: Crypto.randomUUID().replaceAll('-', '').slice(0, 30).toUpperCase(),
         },
-        emailRedirectTo: Linking.createURL('/login'),
+        // The Confirm signup email template sends users to the hosted confirmation
+        // page. A device/local development URL must never be emailed to students.
       },
     });
     if (error)

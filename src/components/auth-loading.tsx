@@ -2,7 +2,8 @@ import React from 'react';
 import { ActivityIndicator, Modal, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors as c, fonts } from '@/constants/theme';
-import { Icon, T } from './ui';
+import { T } from './ui';
+import { BrandMark } from './brand-mark';
 
 export function AuthLoading({ action }: { action: 'login' | 'logout' | null }) {
   const insets = useSafeAreaInsets();
@@ -31,7 +32,7 @@ export function AuthLoading({ action }: { action: 'login' | 'logout' | null }) {
         ]}
       >
         <View style={styles.brand}>
-          <Icon name="silverware-fork-knife" size={36} color={c.white} />
+          <BrandMark size={84} />
         </View>
         <T style={styles.wordmark}>
           campus<T style={{ color: c.orange, fontFamily: fonts.display, fontSize: 27 }}>bite</T>

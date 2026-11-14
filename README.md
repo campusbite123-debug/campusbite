@@ -30,10 +30,10 @@ The workspace `.npmrc` puts npm's cache on the project drive because the system 
    - `supabase/migrations/202611130005_terminal_admin.sql`
 2. Run `supabase/seed.sql` for editable sample meals, categories, inventory and seven days of pickup slots. It creates **no accounts**. Rerunning adds missing dates without resetting stock or orders.
 3. Copy `.env.example` to `.env`. Set `EXPO_PUBLIC_SUPABASE_URL` to your project URL and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to its public publishable or legacy anon key.
-4. Enable email/password authentication, email confirmation and SMTP. Allow the actual redirect addresses: `http://localhost:8081/**`, `campuscanteen://**`, and your Expo Go LAN address such as `exp://YOUR_LAN_IP:8081/--/**`. Browser password recovery uses PKCE, so open the email on the originating device/browser.
+4. Enable email/password authentication, email confirmation and SMTP. Publish the web confirmation page and configure the production Site URL and Confirm signup email template as described in [docs/EMAIL_CONFIRMATION.md](./docs/EMAIL_CONFIRMATION.md). Allow the actual password-recovery redirect addresses: your production `/reset-password` URL, `http://localhost:8081/**`, `campuscanteen://**`, and your Expo Go LAN address such as `exp://YOUR_LAN_IP:8081/--/**`. Password recovery uses PKCE, so open its email on the originating device/browser.
 5. Check the `meal-images` public bucket, 5 MB/MIME restrictions and Realtime publication created by migration 002. Restart Expo after environment changes.
 
-No hosted project credentials were supplied during development. Hosted authentication, email, Storage, Realtime and account provisioning need verification on your configured project.
+Automated browser tests intercept Supabase responses. Verify email delivery, account confirmation, password recovery, Storage and Realtime on your configured project before release.
 
 ## Create an administrator in the terminal
 

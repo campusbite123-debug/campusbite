@@ -9,6 +9,7 @@ import { colors as c, fonts } from '@/constants/theme';
 import { todayLabel } from '@/utils/domain';
 import { Button, Empty, Icon, IconButton, Loading, Sheet, T, s } from './ui';
 import { MobileNavigation } from './mobile-navigation';
+import { BrandMark } from './brand-mark';
 
 const studentNav = [
   ['Home', 'home-outline', '/home'],
@@ -48,7 +49,7 @@ export function Brand({ compact = false, small = false }: { compact?: boolean; s
           transform: [{ rotate: '-5deg' }],
         }}
       >
-        <Icon name="silverware-fork-knife" size={small ? 23 : 25} color="white" />
+        <BrandMark size={small ? 42 : 48} />
       </View>
       {!iconOnly && (
         <View>
