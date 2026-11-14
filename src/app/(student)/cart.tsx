@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, useWindowDimensions } from 'react-native';
+import { View } from 'react-native';
 import { router } from 'expo-router';
 import * as Crypto from 'expo-crypto';
 import { useQueryClient } from '@tanstack/react-query';
@@ -9,6 +9,7 @@ import { placeOrder } from '@/services/repository';
 import { cartTotal, errorMessage, formatDate, money, time, validSlots } from '@/utils/domain';
 import { colors as c, fonts } from '@/constants/theme';
 import { Page } from '@/components/shell';
+import { useLayout } from '@/hooks/use-layout';
 import {
   Button,
   Empty,
@@ -27,12 +28,13 @@ export default function Cart() {
   const { lines, setQuantity, clear } = useCart();
   const toast = useToast();
   const client = useQueryClient();
-  const { width } = useWindowDimensions();
+  const { isPhone, contentWidth } = useLayout();
+  const twoPane = contentWidth >= 850;
   const [slotId, setSlotId] = useState('');
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState('');
   const locked = useRef(false);
-  if (isLoading) return <Loading />;
+  if (isLoading) return <Loading inShell variant="list" label="Loading your bag" />;
   if (error || !data)
     return <ErrorState message={errorMessage(error)} retry={() => void refetch()} />;
   const slots = validSlots(data, lines);
@@ -72,7 +74,31 @@ export default function Cart() {
     }
   }
   return (
-    <Page>
+    <Page
+      footer={
+        isPhone && lines.length > 0 ? (
+          <View testID="checkout-actions" style={[s.row, { justifyContent: 'space-between' }]}>
+            <View style={{ gap: 3 }}>
+              <T muted style={{ fontSize: 10 }}>
+                Cash at pickup
+              </T>
+              <T bold style={{ fontSize: 22 }}>
+                {money(cartTotal(lines, data))}
+              </T>
+            </View>
+            <Button
+              disabled={!chosen}
+              loading={busy}
+              onPress={() => void checkout()}
+              icon="check-circle-outline"
+              style={{ flexShrink: 1 }}
+            >
+              Confirm pre-order
+            </Button>
+          </View>
+        ) : undefined
+      }
+    >
       <T muted style={{ fontSize: 12, marginBottom: 7 }}>
         ONE STEP CLOSER TO YOUR NEXT GOOD MEAL
       </T>
@@ -93,12 +119,22 @@ export default function Cart() {
       ) : (
         <View
           style={{
-            flexDirection: width > 1150 ? 'row' : 'column',
+            flexDirection: twoPane ? 'row' : 'column',
             gap: 24,
             alignItems: 'flex-start',
           }}
         >
-          <View style={[s.card, { flex: 1, width: '100%' }]}>
+          <View
+            style={[
+              s.card,
+              {
+                flex: 1,
+                minWidth: 0,
+                width: twoPane ? undefined : '100%',
+                padding: isPhone ? 16 : 20,
+              },
+            ]}
+          >
             <View style={[s.row, { justifyContent: 'space-between', marginBottom: 20 }]}>
               <T style={s.h2}>Your order</T>
               <T muted style={{ fontSize: 11 }}>
@@ -119,30 +155,50 @@ export default function Cart() {
                   key={line.daily_menu_id}
                   style={{ paddingVertical: 17, borderTopWidth: 1, borderColor: c.line }}
                 >
-                  <View style={[s.row, { gap: 15 }]}>
+                  <View style={[s.row, { gap: 12, alignItems: 'flex-start' }]}>
                     {meal && (
                       <FoodImage
                         uri={meal.image_url}
-                        style={{ width: 74, height: 74, borderRadius: 14 }}
+                        style={{
+                          width: isPhone ? 64 : 74,
+                          height: isPhone ? 64 : 74,
+                          borderRadius: 14,
+                        }}
                       />
                     )}
-                    <View style={{ flex: 1, gap: 7 }}>
-                      <T bold style={{ fontSize: 13 }}>
+                    <View style={{ flex: 1, minWidth: 0, gap: 7 }}>
+                      <T bold style={{ fontSize: 14, lineHeight: 20 }}>
                         {meal?.name ?? 'Unavailable meal'}
                       </T>
                       <T muted style={{ fontSize: 11 }}>
                         {menu ? formatDate(menu.service_date) : 'Remove this item to continue'}
                       </T>
-                      <T bold style={{ color: c.orange }}>
+                      {!isPhone && (
+                        <T bold style={{ color: c.orange }}>
+                          {money((meal?.price ?? 0) * line.quantity)}
+                        </T>
+                      )}
+                    </View>
+                    {!isPhone && (
+                      <Quantity
+                        value={line.quantity}
+                        onChange={(v) => setQuantity(line.daily_menu_id, v)}
+                        max={menu?.quantity ?? 0}
+                      />
+                    )}
+                  </View>
+                  {isPhone && (
+                    <View style={[s.row, { marginTop: 12, justifyContent: 'space-between' }]}>
+                      <T bold style={{ color: c.orangeDark, fontSize: 17 }}>
                         {money((meal?.price ?? 0) * line.quantity)}
                       </T>
+                      <Quantity
+                        value={line.quantity}
+                        onChange={(value) => setQuantity(line.daily_menu_id, value)}
+                        max={menu?.quantity ?? 0}
+                      />
                     </View>
-                    <Quantity
-                      value={line.quantity}
-                      onChange={(v) => setQuantity(line.daily_menu_id, v)}
-                      max={menu?.quantity ?? 0}
-                    />
-                  </View>
+                  )}
                   {invalid && (
                     <T style={{ color: c.red, fontSize: 11, marginTop: 10 }}>
                       This quantity is no longer available. Reduce it or remove the item.
@@ -156,7 +212,9 @@ export default function Cart() {
               Add something else
             </Button>
           </View>
-          <View style={[s.card, { width: width > 1150 ? 360 : '100%', gap: 14 }]}>
+          <View
+            style={[s.card, { width: twoPane ? 350 : '100%', gap: 14, padding: isPhone ? 16 : 20 }]}
+          >
             <T style={s.h2}>Make it your time</T>
             <T muted style={{ fontSize: 11, lineHeight: 18 }}>
               Pickup times account for meal preparation, stock and canteen hours. All times are in
@@ -191,7 +249,7 @@ export default function Cart() {
             <View style={s.divider} />
             <View style={[s.row, { backgroundColor: '#F8F8F2', padding: 14, borderRadius: 12 }]}>
               <Icon name="cash-multiple" color={c.green} />
-              <View>
+              <View style={{ flex: 1 }}>
                 <T bold style={{ fontSize: 12 }}>
                   Cash on Pickup
                 </T>
@@ -201,8 +259,10 @@ export default function Cart() {
               </View>
             </View>
             <View style={[s.row, { justifyContent: 'space-between', marginVertical: 5 }]}>
-              <T bold>Total to pay at pickup</T>
-              <T style={{ fontSize: 24, fontFamily: fonts.display }}>
+              <T bold style={{ flex: 1 }}>
+                Total to pay at pickup
+              </T>
+              <T style={{ fontSize: 24, fontFamily: fonts.bold, fontVariant: ['tabular-nums'] }}>
                 {money(cartTotal(lines, data))}
               </T>
             </View>
@@ -211,14 +271,16 @@ export default function Cart() {
                 {failure}
               </T>
             )}
-            <Button
-              icon="check-circle-outline"
-              disabled={!chosen || !lines.length}
-              loading={busy}
-              onPress={() => void checkout()}
-            >
-              Confirm pre-order
-            </Button>
+            {!isPhone && (
+              <Button
+                icon="check-circle-outline"
+                disabled={!chosen || !lines.length}
+                loading={busy}
+                onPress={() => void checkout()}
+              >
+                Confirm pre-order
+              </Button>
+            )}
             <T muted style={{ fontSize: 9, lineHeight: 16, textAlign: 'center' }}>
               Stock and prices are checked again when you confirm.{'\n'}No pickup fee. No online
               payment required.

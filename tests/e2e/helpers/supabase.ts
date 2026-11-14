@@ -250,10 +250,12 @@ export async function signIn(page: Page, role: 'student' | 'admin') {
   ).toBeVisible();
 }
 export async function signOut(page: Page) {
-  const desktop = page.viewportSize()!.width >= 1000;
-  if (desktop) await page.getByText('Sign out', { exact: true }).click();
+  const sidebar = page.viewportSize()!.width >= 768;
+  if (sidebar) await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   else {
-    await page.getByRole('tab', { name: 'Profile', exact: true }).click();
+    const profile = page.getByRole('tab', { name: 'Profile', exact: true });
+    if (await profile.count()) await profile.click();
+    else await page.getByRole('tab', { name: 'More', exact: true }).click();
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   }
   await expect(page).toHaveURL(/\/login/);

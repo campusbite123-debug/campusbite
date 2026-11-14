@@ -15,10 +15,11 @@ import type { Snapshot } from '@/types';
 import { errorMessage, money } from '@/utils/domain';
 import { colors as c, fonts } from '@/constants/theme';
 import { Page } from './shell';
+import { useLayout } from '@/hooks/use-layout';
 import { ErrorState, Icon, Loading, T, s } from './ui';
 export function DataPage({ children }: { children: (data: Snapshot) => React.ReactNode }) {
   const { data, error, isLoading, refetch } = useSnapshot();
-  if (isLoading) return <Loading />;
+  if (isLoading) return <Loading inShell variant="dashboard" label="Loading your workspace" />;
   if (error || !data)
     return <ErrorState message={errorMessage(error)} retry={() => void refetch()} />;
   return <Page>{children(data)}</Page>;
@@ -32,14 +33,26 @@ export function AdminHeader({
   subtitle: string;
   action?: React.ReactNode;
 }) {
+  const { isPhone } = useLayout();
   return (
-    <View style={[s.row, { justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 27 }]}>
-      <View style={{ flexShrink: 1 }}>
+    <View
+      style={[
+        s.row,
+        {
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          marginBottom: 27,
+          flexDirection: isPhone ? 'column' : 'row',
+          alignItems: isPhone ? 'stretch' : 'center',
+        },
+      ]}
+    >
+      <View style={{ flexShrink: 1, minWidth: 0 }}>
         <T muted style={{ fontSize: 10, letterSpacing: 1.4, marginBottom: 7 }}>
           CANTEEN MANAGEMENT
         </T>
-        <T style={s.h1}>{title}</T>
-        <T muted style={{ fontSize: 12, marginTop: 8 }}>
+        <T style={[s.h1, { fontSize: isPhone ? 27 : 30 }]}>{title}</T>
+        <T muted style={{ fontSize: 13, lineHeight: 20, marginTop: 8 }}>
           {subtitle}
         </T>
       </View>
@@ -88,27 +101,36 @@ export function Metric({
   accent?: boolean;
   note?: string;
 }) {
+  const { contentWidth, isPhone } = useLayout();
   return (
     <View
+      testID="metric-card"
       style={[
         s.card,
         {
           flex: 1,
-          minWidth: 135,
+          minWidth: 0,
+          flexBasis: contentWidth < 1000 ? '46%' : '22%',
           backgroundColor: accent ? c.orange : c.white,
           borderColor: accent ? c.orange : c.line,
-          padding: 22,
+          padding: isPhone ? 16 : 22,
         },
       ]}
     >
       <View style={[s.row, { justifyContent: 'space-between' }]}>
-        <T style={{ color: accent ? '#FFE9DD' : c.muted, fontSize: 11 }}>{label}</T>
+        <T style={{ color: accent ? '#FFE9DD' : c.muted, fontSize: 12, lineHeight: 17, flex: 1 }}>
+          {label}
+        </T>
         <Icon name={icon} size={20} color={accent ? '#FFE4D3' : c.orange} />
       </View>
       <T
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.6}
         style={{
-          fontFamily: fonts.display,
-          fontSize: 29,
+          fontFamily: fonts.bold,
+          fontVariant: ['tabular-nums'],
+          fontSize: isPhone ? 26 : 29,
           color: accent ? c.white : c.ink,
           marginTop: 16,
         }}

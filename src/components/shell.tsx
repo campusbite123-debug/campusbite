@@ -1,11 +1,15 @@
-import React, { useEffect } from 'react';
-import { Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Pressable, ScrollView, View } from 'react-native';
+import type { StyleProp, ViewStyle } from 'react-native';
 import { router, Slot, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth, useCart, useSnapshot, useToast } from '@/contexts/app';
+import { useLayout } from '@/hooks/use-layout';
 import { colors as c, fonts } from '@/constants/theme';
 import { todayLabel } from '@/utils/domain';
-import { Button, Empty, Icon, IconButton, Loading, T, s } from './ui';
+import { Button, Empty, Icon, IconButton, Loading, Sheet, T, s } from './ui';
+import { MobileNavigation } from './mobile-navigation';
+
 const studentNav = [
   ['Home', 'home-outline', '/home'],
   ['Menu', 'silverware-fork-knife', '/menu'],
@@ -22,13 +26,21 @@ const adminNav = [
   ['Students', 'account-group-outline', '/admin/students'],
   ['Settings', 'cog-outline', '/admin/settings'],
 ];
-export function Brand() {
+
+export function Brand({ compact = false, small = false }: { compact?: boolean; small?: boolean }) {
+  const { width, fontScale } = useLayout();
+  const iconOnly = compact || (width < 600 && fontScale > 1.3);
   return (
-    <View style={[s.row, { gap: 10 }]}>
+    <View
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel="Campusbite"
+      style={[s.row, { gap: 9 }]}
+    >
       <View
         style={{
-          width: 39,
-          height: 42,
+          width: small ? 34 : 39,
+          height: small ? 37 : 42,
           borderRadius: 13,
           backgroundColor: c.orange,
           justifyContent: 'center',
@@ -36,29 +48,38 @@ export function Brand() {
           transform: [{ rotate: '-5deg' }],
         }}
       >
-        <Icon name="silverware-fork-knife" size={25} color="white" />
+        <Icon name="silverware-fork-knife" size={small ? 23 : 25} color="white" />
       </View>
-      <View>
-        <T style={{ fontFamily: fonts.display, fontSize: 22, letterSpacing: -0.9 }}>
-          campus<T style={{ fontSize: 22, color: c.orange, fontFamily: fonts.display }}>bite</T>
-        </T>
-        <T muted style={{ fontSize: 8, letterSpacing: 1 }}>
-          GOOD FOOD. ZERO QUEUES.
-        </T>
-      </View>
+      {!iconOnly && (
+        <View>
+          <T style={{ fontFamily: fonts.display, fontSize: small ? 20 : 22, letterSpacing: -0.9 }}>
+            campus
+            <T style={{ fontSize: small ? 20 : 22, color: c.orange, fontFamily: fonts.display }}>
+              bite
+            </T>
+          </T>
+          <T muted style={{ fontSize: small ? 7 : 8, letterSpacing: 0.9 }}>
+            GOOD FOOD. ZERO QUEUES.
+          </T>
+        </View>
+      )}
     </View>
   );
 }
+
 export function Shell({ admin = false }: { admin?: boolean }) {
-  const { width } = useWindowDimensions();
-  const desktop = width >= 1000;
+  const { width, hasSidebar, fullSidebar, sidebarWidth, pagePadding } = useLayout();
   const insets = useSafeAreaInsets();
   const { user, loading, logout, recovering } = useAuth();
   const path = usePathname();
   const { lines } = useCart();
   const { data } = useSnapshot();
   const toast = useToast();
+  const [moreOpen, setMoreOpen] = useState(false);
   const nav = admin ? adminNav : studentNav;
+  const mobileNav = admin
+    ? [adminNav[0], adminNav[3], adminNav[1], adminNav[4], ['More', 'dots-horizontal', 'more']]
+    : [studentNav[0], studentNav[3], studentNav[1], studentNav[2], studentNav[4]];
   useEffect(() => {
     if (loading) return;
     if (recovering) router.replace('/reset-password');
@@ -78,122 +99,163 @@ export function Shell({ admin = false }: { admin?: boolean }) {
         <Button onPress={() => void logout()}>Sign out</Button>
       </Empty>
     );
-  const go = (href: string) => router.push(href as any);
+
+  const go = (href: string) => {
+    setMoreOpen(false);
+    router.push(href as any);
+  };
   const selected = (href: string) => (href === '/admin' ? path === href : path.startsWith(href));
+  const signOut = () => void logout().catch((error) => toast(error.message));
+  const itemCount = lines.reduce((total, item) => total + item.quantity, 0);
   return (
     <View
       style={{
         flex: 1,
+        minWidth: 0,
         backgroundColor: c.cream,
-        flexDirection: desktop ? 'row' : 'column',
-        paddingTop: desktop ? 0 : insets.top,
+        flexDirection: hasSidebar ? 'row' : 'column',
+        paddingTop: insets.top,
       }}
     >
-      {desktop && (
+      {hasSidebar && (
         <View
+          testID="navigation-sidebar"
           style={{
-            width: 224,
+            width: sidebarWidth,
             backgroundColor: c.white,
             borderRightWidth: 1,
             borderColor: c.line,
-            padding: 25,
-            paddingTop: 35,
           }}
         >
-          <Brand />
-          <View style={{ marginTop: 49, gap: 9 }}>
-            <T muted style={{ fontSize: 8, letterSpacing: 1, marginBottom: 8, marginLeft: 13 }}>
-              {admin ? 'CANTEEN WORKSPACE' : 'YOUR DAILY GOODNESS'}
-            </T>
-            {nav.map(([label, icon, href]) => (
-              <Pressable
-                key={href}
-                accessibilityRole="link"
-                accessibilityLabel={label}
-                onPress={() => go(href)}
-                style={[
-                  s.row,
-                  {
-                    gap: 14,
-                    paddingHorizontal: 15,
-                    paddingVertical: 14,
-                    borderRadius: 12,
-                    backgroundColor: selected(href) ? c.peach : 'transparent',
-                  },
-                ]}
-              >
-                <Icon name={icon} size={21} color={selected(href) ? c.orange : c.muted} />
-                <T
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{
+              flexGrow: 1,
+              padding: fullSidebar ? 25 : 10,
+              paddingTop: fullSidebar ? 35 : 23,
+              paddingBottom: Math.max(insets.bottom, 20),
+            }}
+          >
+            <View style={{ alignItems: fullSidebar ? 'flex-start' : 'center' }}>
+              <Brand compact={!fullSidebar} />
+            </View>
+            <View style={{ marginTop: fullSidebar ? 49 : 28, gap: 7 }}>
+              {fullSidebar && (
+                <T muted style={{ fontSize: 8, letterSpacing: 1, marginBottom: 8, marginLeft: 13 }}>
+                  {admin ? 'CANTEEN WORKSPACE' : 'YOUR DAILY GOODNESS'}
+                </T>
+              )}
+              {nav.map(([label, icon, href]) => (
+                <Pressable
+                  key={href}
+                  accessibilityRole="link"
+                  accessibilityLabel={label}
+                  accessibilityState={{ selected: selected(href) }}
+                  onPress={() => go(href)}
                   style={{
-                    fontFamily: selected(href) ? fonts.bold : fonts.medium,
-                    color: selected(href) ? c.orange : '#70736C',
-                    fontSize: 12,
+                    flexDirection: fullSidebar ? 'row' : 'column',
+                    alignItems: 'center',
+                    justifyContent: fullSidebar ? 'flex-start' : 'center',
+                    gap: fullSidebar ? 13 : 6,
+                    minHeight: fullSidebar ? 49 : 62,
+                    paddingHorizontal: fullSidebar ? 14 : 3,
+                    paddingVertical: 10,
+                    borderRadius: 13,
+                    backgroundColor: selected(href) ? c.peach : 'transparent',
                   }}
                 >
-                  {label}
-                </T>
-                {href === '/cart' && lines.length > 0 && (
-                  <T bold style={{ marginLeft: 'auto', color: c.orange, fontSize: 11 }}>
-                    {lines.reduce((n, i) => n + i.quantity, 0)}
+                  <Icon
+                    name={icon}
+                    size={fullSidebar ? 21 : 24}
+                    color={selected(href) ? c.orange : c.muted}
+                  />
+                  <T
+                    style={{
+                      fontFamily: selected(href) ? fonts.bold : fonts.medium,
+                      color: selected(href) ? c.orangeDark : '#70736C',
+                      fontSize: fullSidebar ? 12 : 10,
+                      textAlign: fullSidebar ? 'left' : 'center',
+                      flexShrink: 1,
+                    }}
+                  >
+                    {fullSidebar ? label : label === 'Menu management' ? 'Menu' : label}
                   </T>
-                )}
-              </Pressable>
-            ))}
-          </View>
-          <View style={{ flex: 1 }} />
-          {!admin && (
-            <View
+                  {fullSidebar && href === '/cart' && itemCount > 0 && (
+                    <T bold style={{ marginLeft: 'auto', color: c.orange, fontSize: 11 }}>
+                      {itemCount}
+                    </T>
+                  )}
+                </Pressable>
+              ))}
+            </View>
+            <View style={{ flex: 1, minHeight: 24 }} />
+            {fullSidebar && !admin && (
+              <View
+                style={{
+                  backgroundColor: c.greenLight,
+                  padding: 18,
+                  borderRadius: 16,
+                  gap: 10,
+                  marginBottom: 24,
+                }}
+              >
+                <Icon name="leaf" color={c.green} size={24} />
+                <T bold style={{ color: c.green, fontSize: 13 }}>
+                  A little less waiting.
+                </T>
+                <T style={{ color: c.green, fontSize: 11, lineHeight: 18 }}>
+                  A little more time for you. Pre-order your next break.
+                </T>
+              </View>
+            )}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Sign out"
+              onPress={signOut}
               style={{
-                backgroundColor: c.greenLight,
-                padding: 18,
-                borderRadius: 16,
-                gap: 10,
-                marginBottom: 24,
+                flexDirection: fullSidebar ? 'row' : 'column',
+                gap: 8,
+                paddingVertical: 12,
+                paddingHorizontal: fullSidebar ? 12 : 0,
+                alignItems: 'center',
+                minHeight: 48,
               }}
             >
-              <Icon name="leaf" color={c.green} size={24} />
-              <T bold style={{ color: c.green, fontSize: 13 }}>
-                A little less waiting.
+              <Icon name="logout" color={c.muted} size={21} />
+              <T muted style={{ fontSize: fullSidebar ? 12 : 10 }}>
+                Sign out
               </T>
-              <T style={{ color: c.green, fontSize: 11, lineHeight: 18 }}>
-                A little more time for you. Pre-order your next break.
+            </Pressable>
+            {fullSidebar && (
+              <T muted style={{ fontSize: 9, marginTop: 20 }}>
+                MADE FOR YOUR CAMPUS ♡
               </T>
-            </View>
-          )}
-          <Pressable
-            onPress={() => void logout().catch((e) => toast(e.message))}
-            style={[s.row, { padding: 12 }]}
-          >
-            <Icon name="logout" color={c.muted} size={19} />
-            <T muted style={{ fontSize: 12 }}>
-              Sign out
-            </T>
-          </Pressable>
-          <T muted style={{ fontSize: 9, marginTop: 20 }}>
-            MADE FOR YOUR CAMPUS ♡
-          </T>
+            )}
+          </ScrollView>
         </View>
       )}
-      <View style={{ flex: 1 }}>
+
+      <View style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
         <View
           style={{
-            height: desktop ? 85 : 68,
-            paddingHorizontal: desktop ? 34 : 20,
+            height: hasSidebar ? 80 : 68,
+            paddingHorizontal: pagePadding,
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
+            gap: 12,
             borderBottomWidth: 1,
             borderColor: c.line,
             backgroundColor: c.white,
           }}
         >
-          {desktop ? (
-            <View style={s.row}>
+          {hasSidebar ? (
+            <View style={[s.row, { flex: 1, minWidth: 0 }]}>
               <View
                 style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 11,
+                  width: 36,
+                  height: 36,
+                  borderRadius: 12,
                   backgroundColor: c.peach,
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -202,23 +264,23 @@ export function Shell({ admin = false }: { admin?: boolean }) {
                 <Icon
                   name={admin ? 'storefront-outline' : 'map-marker-outline'}
                   color={c.orange}
-                  size={19}
+                  size={20}
                 />
               </View>
-              <View>
-                <T muted style={{ fontSize: 9, marginBottom: 3 }}>
+              <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+                <T muted style={{ fontSize: 9 }}>
                   {admin ? 'MANAGEMENT PORTAL' : 'YOUR PICKUP SPOT'}
                 </T>
-                <T bold style={{ fontSize: 12 }}>
-                  {data?.settings.name ?? 'Main Campus Canteen'}
+                <T bold numberOfLines={1} style={{ fontSize: 13 }}>
+                  {data?.settings.name ?? 'Campus Canteen'}
                 </T>
               </View>
             </View>
           ) : (
-            <Brand />
+            <Brand small={width < 380} />
           )}
-          <View style={[s.row, { gap: desktop ? 22 : 10 }]}>
-            {desktop && (
+          <View style={[s.row, { gap: fullSidebar ? 20 : 8 }]}>
+            {fullSidebar && (
               <T muted style={{ fontSize: 11 }}>
                 {todayLabel()}
               </T>
@@ -227,20 +289,20 @@ export function Shell({ admin = false }: { admin?: boolean }) {
               icon="bell-outline"
               label="View order updates"
               onPress={() => go(admin ? '/admin/orders' : '/orders')}
-              style={{ borderWidth: 1, borderColor: c.line, borderRadius: 12 }}
+              style={{ borderWidth: 1, borderColor: c.line, borderRadius: 13 }}
             />
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="View profile"
               onPress={() => go(admin ? '/admin/settings' : '/profile')}
-              style={s.row}
+              style={[s.row, { minHeight: 44, minWidth: 44, justifyContent: 'center' }]}
             >
               <View
                 style={{
                   backgroundColor: '#E9E7DB',
-                  width: 36,
-                  height: 36,
-                  borderRadius: 13,
+                  width: 40,
+                  height: 40,
+                  borderRadius: 14,
                   justifyContent: 'center',
                   alignItems: 'center',
                 }}
@@ -253,12 +315,12 @@ export function Shell({ admin = false }: { admin?: boolean }) {
                     .join('')}
                 </T>
               </View>
-              {desktop && (
-                <View>
+              {fullSidebar && (
+                <View style={{ gap: 3 }}>
                   <T bold style={{ fontSize: 12 }}>
                     {user.full_name}
                   </T>
-                  <T muted style={{ fontSize: 10, marginTop: 2 }}>
+                  <T muted style={{ fontSize: 10 }}>
                     {admin ? 'Canteen administrator' : 'Student account'}
                   </T>
                 </View>
@@ -266,112 +328,112 @@ export function Shell({ admin = false }: { admin?: boolean }) {
             </Pressable>
           </View>
         </View>
-        {admin && !desktop && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ flexGrow: 0, backgroundColor: c.white }}
-            contentContainerStyle={{ paddingHorizontal: 14, paddingVertical: 12, gap: 8 }}
-          >
-            {nav.map(([label, icon, href]) => (
-              <Pressable
-                key={href}
-                onPress={() => go(href)}
-                style={[
-                  s.row,
-                  {
-                    borderRadius: 10,
-                    backgroundColor: selected(href) ? c.peach : c.white,
-                    padding: 10,
-                    gap: 6,
-                  },
-                ]}
-              >
-                <Icon name={icon} size={16} color={selected(href) ? c.orange : c.muted} />
-                <T style={{ fontSize: 11, color: selected(href) ? c.orange : c.ink }}>{label}</T>
-              </Pressable>
-            ))}
-          </ScrollView>
-        )}
-        <View style={{ flex: 1 }}>
+
+        <View style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
           <Slot />
         </View>
-        {!admin && !desktop && (
-          <View
-            style={{
-              paddingBottom: Math.max(insets.bottom, 9),
-              paddingTop: 10,
-              flexDirection: 'row',
-              borderTopWidth: 1,
-              borderColor: c.line,
-              backgroundColor: c.white,
-            }}
-          >
-            {nav.map(([label, icon, href]) => (
-              <Pressable
-                key={href}
-                accessibilityRole="tab"
-                accessibilityLabel={label}
-                accessibilityState={{ selected: selected(href) }}
-                onPress={() => go(href)}
-                style={{ flex: 1, alignItems: 'center', gap: 4 }}
-              >
-                <View>
-                  <Icon name={icon} size={23} color={selected(href) ? c.orange : c.muted} />
-                  {href === '/cart' && lines.length > 0 && (
-                    <View
-                      style={{
-                        position: 'absolute',
-                        right: -7,
-                        top: -4,
-                        width: 15,
-                        height: 15,
-                        borderRadius: 8,
-                        backgroundColor: c.orange,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <T style={{ fontSize: 8, color: c.white }}>
-                        {lines.reduce((n, i) => n + i.quantity, 0)}
-                      </T>
-                    </View>
-                  )}
-                </View>
-                <T
-                  style={{
-                    fontSize: 9,
-                    fontFamily: fonts.medium,
-                    color: selected(href) ? c.orange : c.muted,
-                  }}
-                >
-                  {label}
-                </T>
-              </Pressable>
-            ))}
-          </View>
+
+        {!hasSidebar && (
+          <MobileNavigation
+            items={mobileNav.map(([label, icon, href]) => ({
+              href,
+              icon,
+              label: admin && href === '/admin' ? 'Home' : label,
+              accessibilityLabel: label,
+              selected:
+                href === 'more'
+                  ? !mobileNav
+                      .filter((item) => item[2] !== 'more')
+                      .some((item) => selected(item[2]))
+                  : selected(href),
+              badge: href === '/cart' ? itemCount : undefined,
+            }))}
+            onNavigate={(href) => (href === 'more' ? setMoreOpen(true) : go(href))}
+          />
         )}
       </View>
+
+      <Sheet
+        visible={moreOpen && !hasSidebar}
+        title="Canteen workspace"
+        onClose={() => setMoreOpen(false)}
+      >
+        <View style={{ gap: 8 }}>
+          {adminNav.map(([label, icon, href]) => (
+            <Pressable
+              key={href}
+              accessibilityRole="link"
+              accessibilityLabel={label}
+              onPress={() => go(href)}
+              style={[
+                s.row,
+                {
+                  minHeight: 52,
+                  paddingHorizontal: 14,
+                  borderRadius: 12,
+                  backgroundColor: selected(href) ? c.peach : c.cream,
+                },
+              ]}
+            >
+              <Icon name={icon} color={selected(href) ? c.orangeDark : c.muted} />
+              <T bold style={{ flex: 1 }}>
+                {label}
+              </T>
+              <Icon name="chevron-right" size={18} color={c.muted} />
+            </Pressable>
+          ))}
+          <Button secondary icon="logout" onPress={signOut}>
+            Sign out
+          </Button>
+        </View>
+      </Sheet>
     </View>
   );
 }
-export function Page({ children, style }: React.PropsWithChildren<{ style?: any }>) {
-  const { width } = useWindowDimensions();
+
+export function Page({
+  children,
+  style,
+  footer,
+}: React.PropsWithChildren<{
+  style?: StyleProp<ViewStyle>;
+  footer?: React.ReactNode;
+}>) {
+  const { pagePadding, hasSidebar } = useLayout();
   return (
-    <ScrollView
-      keyboardShouldPersistTaps="handled"
-      contentContainerStyle={[
-        {
-          padding: width >= 1000 ? 32 : 20,
-          paddingBottom: 45,
-          maxWidth: 1600,
-          width: '100%',
-          alignSelf: 'center',
-        },
-        style,
-      ]}
-    >
-      {children}
-    </ScrollView>
+    <View style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
+      <ScrollView
+        testID="page-scroll"
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets
+        showsVerticalScrollIndicator={hasSidebar}
+        contentContainerStyle={[
+          {
+            padding: pagePadding,
+            paddingBottom: 32,
+            maxWidth: 1600,
+            width: '100%',
+            alignSelf: 'center',
+          },
+          style,
+        ]}
+      >
+        {children}
+      </ScrollView>
+      {footer && (
+        <View
+          style={{
+            paddingHorizontal: pagePadding,
+            paddingVertical: 12,
+            borderTopWidth: 1,
+            borderColor: c.line,
+            backgroundColor: c.white,
+          }}
+        >
+          {footer}
+        </View>
+      )}
+    </View>
   );
 }

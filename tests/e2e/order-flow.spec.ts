@@ -68,15 +68,17 @@ test('student pre-order → admin kitchen → verified pickup and revenue', asyn
   await page
     .getByRole('button', { name: 'Add Chicken Adobo with Rice to bag', exact: true })
     .click();
+  await expect(page.getByText('Added to your bag', { exact: true })).toBeVisible();
+  await page.screenshot({ path: 'test-results/bag-toast-desktop.png', fullPage: true });
+  await page.getByRole('button', { name: 'Dismiss notification', exact: true }).click();
+  await expect(page.getByText('Added to your bag', { exact: true })).not.toBeVisible();
   await page.getByRole('button', { name: 'Add House Iced Tea to bag', exact: true }).click();
   await page.getByRole('link', { name: /Cart/ }).click();
   await expect(page.getByText('Total to pay at pickup')).toBeVisible();
   await page.getByRole('button', { name: '9:30 AM', exact: true }).click();
   await page.getByRole('button', { name: 'Confirm pre-order', exact: true }).click();
   await expect(page.getByText('Your pre-order is in!', { exact: true })).toBeVisible();
-  await expect(
-    page.getByText('Added to your bag. Good choice!', { exact: true }),
-  ).not.toBeVisible();
+  await expect(page.getByText('Added to your bag', { exact: true })).not.toBeVisible();
   const code = (await page.getByText(/^[A-F0-9]{8}$/).textContent())!.trim();
   const orderNumber = (await page.getByText(/^CC-/).last().textContent())!.trim();
   await expect(page.getByText('Payment due at pickup', { exact: true })).toBeVisible();
@@ -128,7 +130,16 @@ test('mobile navigation, filtering, details and route protection', async ({ page
   await page.getByRole('button', { name: 'View Pancit Canton', exact: true }).click();
   await expect(page.getByText('A closer look')).toBeVisible();
   await page.getByRole('button', { name: /Add to bag ·/ }).click();
-  await page.getByRole('tab', { name: 'Cart', exact: true }).click();
+  await expect(page.getByText('Added to your bag', { exact: true })).toBeVisible();
+  await expect(page.getByText('A closer look', { exact: true })).not.toBeVisible();
+  await page.screenshot({ path: 'test-results/bag-toast-mobile.png', fullPage: true });
+  await page.clock.fastForward(4600);
+  await expect(page.getByText('Added to your bag', { exact: true })).not.toBeVisible();
+  await page.getByRole('button', { name: 'View Pancit Canton', exact: true }).click();
+  await page.getByRole('button', { name: /Add to bag ·/ }).click();
+  await expect(page.getByText('Added to your bag', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'View bag', exact: true }).click();
+  await expect(page.getByText('Added to your bag', { exact: true })).not.toBeVisible();
   await expect(page.getByText('Your bag, your break.')).toBeVisible();
   await page.goto('/admin');
   await expect(page).toHaveURL(/\/home/);

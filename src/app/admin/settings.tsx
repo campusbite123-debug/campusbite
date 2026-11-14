@@ -8,7 +8,9 @@ import { Button, Input, Pill, Sheet, T, s } from '@/components/ui';
 import { colors as c } from '@/constants/theme';
 import type { Settings, Slot, Snapshot } from '@/types';
 import { dayKey, formatDate, futureDay, time } from '@/utils/domain';
+import { useLayout } from '@/hooks/use-layout';
 function SettingsForm({ settings }: { settings: Settings }) {
+  const { isPhone } = useLayout();
   const { user } = useAuth();
   const { busy, run } = useAction();
   const [form, setForm] = useState(settings);
@@ -25,15 +27,24 @@ function SettingsForm({ settings }: { settings: Settings }) {
         value={form.pickup_location}
         onChangeText={(pickup_location) => setForm({ ...form, pickup_location })}
       />
-      <View style={s.row}>
-        <View style={{ flex: 1 }}>
+      <View
+        style={[
+          s.row,
+          {
+            flexDirection: isPhone ? 'column' : 'row',
+            alignItems: 'stretch',
+            gap: isPhone ? 0 : 12,
+          },
+        ]}
+      >
+        <View style={{ flex: isPhone ? undefined : 1 }}>
           <Input
             label="Opening time (HH:MM)"
             value={form.opens_at.slice(0, 5)}
             onChangeText={(opens_at) => setForm({ ...form, opens_at })}
           />
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: isPhone ? undefined : 1 }}>
           <Input
             label="Closing time (HH:MM)"
             value={form.closes_at.slice(0, 5)}

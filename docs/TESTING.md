@@ -19,6 +19,13 @@ Coverage:
 - Shared email/password login, blank credentials, masked password and no role chooser/admin hints.
 - Signup without a student ID, a generated internal account reference, and a profile without student ID fields.
 - Desktop and mobile order confirmation with pickup code, time/location, itemized receipt and a working Track my order action.
+- Compact bag notifications on desktop/mobile, close and View bag actions, automatic dismissal and repeated notifications.
+- Meal cards show current bag quantities, disable Add at the stock limit, distinguish sold-out/paused/unavailable pickup states and keep meal details accessible.
+- The featured-food banner rotates through repeated loops without a counter or playback button, continues after rapid manual selection, stays still with reduced motion, and keeps all slides and the menu action within phone/tablet/desktop bounds.
+- Phone (320/390px), tablet portrait (768px), tablet landscape (1024px) and desktop (1440px) layouts for login, catalog, checkout, receipts and every administrator page. Includes touch-target sizes, horizontal overflow, page reloads, rotation and tablet split-screen without losing the bag.
+- Floating phone navigation keeps five reachable tabs, a raised circle on the current page, accurate selected states and bag count, and a separate checkout area above the dock. The circle follows direct links, reloads and browser history, including reduced-motion navigation. Administrator More still reaches the remaining pages.
+- Bundled Inter and Plus Jakarta Sans faces load successfully at every login viewport; font changes preserve the responsive layout checks.
+- Skeleton placeholders cover slow font loading and menu requests on phones, tablets and desktop, resolve into real content without hydration errors, and respect changes to the reduced-motion preference.
 - Order loading with a null payment before pickup and a payment object after cash collection; browser fixtures match the database's one-to-one payment relation.
 - Wrong password rejection, signed-out route protection, old demo-session rejection and student/admin routing through the same form.
 - Student checkout → administrator preparation → wrong-code rejection → paid pickup/revenue.
@@ -31,6 +38,8 @@ Coverage:
 `tests/fixtures/demo-engine.ts` is a test-only reference engine for the HTTP fixture. It is not imported into `src/`. The SQL suite executes all five migrations and the seed in PGlite with stand-ins for Supabase Auth/Storage schemas. PGlite's one backend session cannot prove lock contention across independent connections. Supabase HTTP authentication, email, hosted Storage/Realtime and physical devices still require a live project.
 
 ## Live demonstration setup
+
+Before a device demonstration, check the keyboard, safe areas, scrolling and orientation on the actual iPhone/iPad or Android device. Browser viewport tests and native exports do not replace device testing.
 
 1. Apply all migrations, including `202611130005_terminal_admin.sql`, and run the seed.
 2. Configure public `.env` values and private terminal `.env.admin.local` values as described in README.

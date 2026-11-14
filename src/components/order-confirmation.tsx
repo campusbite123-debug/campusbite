@@ -108,6 +108,9 @@ export function OrderConfirmation({
                 </View>
                 <T
                   selectable={!cancelled && !completed}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.65}
                   style={[
                     styles.code,
                     compact && { marginTop: 12 },
@@ -298,7 +301,8 @@ const styles = StyleSheet.create({
   ticket: { backgroundColor: '#293C2F', borderRadius: 18, padding: 22, overflow: 'hidden' },
   ticketLabel: { fontSize: 9, letterSpacing: 1.5, color: '#D7E5CD', fontFamily: fonts.semibold },
   code: {
-    fontFamily: fonts.display,
+    fontFamily: fonts.bold,
+    fontVariant: ['tabular-nums'],
     fontSize: 30,
     letterSpacing: 4,
     color: c.white,
@@ -341,7 +345,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginVertical: 18,
   },
-  amount: { fontFamily: fonts.display, fontSize: 27, color: c.ink, letterSpacing: -0.8 },
+  amount: {
+    fontFamily: fonts.bold,
+    fontVariant: ['tabular-nums'],
+    fontSize: 27,
+    color: c.ink,
+    letterSpacing: -0.6,
+  },
   footer: {
     padding: 20,
     borderTopWidth: 1,

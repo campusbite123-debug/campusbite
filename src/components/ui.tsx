@@ -1,21 +1,22 @@
 import React from 'react';
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
-  useWindowDimensions,
 } from 'react-native';
 import type { StyleProp, TextInputProps, ViewStyle } from 'react-native';
 import { Modal, Portal } from 'react-native-paper';
+import { Image } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors as c, fonts } from '@/constants/theme';
 import { foodImageSource } from '@/constants/food-images';
 import type { Status } from '@/types';
+import { useLayout } from '@/hooks/use-layout';
 export function T({
   children,
   style,
@@ -80,7 +81,7 @@ export function Button({
       style={({ pressed }) => [
         s.button,
         {
-          minHeight: small ? 38 : 49,
+          minHeight: small ? 44 : 50,
           paddingHorizontal: small ? 14 : 20,
           backgroundColor: secondary ? c.white : c.orange,
           borderWidth: secondary ? 1 : 0,
@@ -95,7 +96,16 @@ export function Button({
       ) : (
         <>
           {icon && <Icon name={icon} size={18} color={secondary ? c.ink : c.white} />}
-          <T bold style={{ color: secondary ? c.ink : c.white, fontSize: small ? 12 : 14 }}>
+          <T
+            bold
+            style={{
+              color: secondary ? c.ink : c.white,
+              fontFamily: fonts.semibold,
+              fontSize: small ? 13 : 14,
+              flexShrink: 1,
+              textAlign: 'center',
+            }}
+          >
             {children}
           </T>
         </>
@@ -134,6 +144,7 @@ export function IconButton({
           opacity: disabled ? 0.35 : pressed ? 0.6 : 1,
         },
         style,
+        { minWidth: 44, minHeight: 44 },
       ]}
     >
       <Icon name={icon} color={color} size={20} />
@@ -177,6 +188,7 @@ export function Input({
   style,
   ...props
 }: TextInputProps & { label?: string; error?: string }) {
+  const { isPhone } = useLayout();
   return (
     <View style={{ gap: 7, marginBottom: 15 }}>
       {label && (
@@ -190,6 +202,7 @@ export function Input({
         {...props}
         style={[
           s.input,
+          isPhone && { fontSize: 16, minHeight: 52 },
           props.multiline && { height: 90, textAlignVertical: 'top', paddingTop: 13 },
           style,
         ]}
@@ -207,6 +220,7 @@ export function Search({
   onChangeText: (v: string) => void;
   placeholder?: string;
 }) {
+  const { isPhone } = useLayout();
   return (
     <View style={s.search}>
       <Icon name="magnify" size={21} color={c.muted} />
@@ -220,7 +234,7 @@ export function Search({
           {
             flex: 1,
             fontFamily: fonts.regular,
-            fontSize: 13,
+            fontSize: isPhone ? 16 : 14,
             color: c.ink,
             paddingVertical: 10,
             outlineWidth: 0,
@@ -292,29 +306,51 @@ export function Sheet({
   onClose,
   title,
   children,
-}: React.PropsWithChildren<{ visible: boolean; onClose: () => void; title: string }>) {
-  const { width, height } = useWindowDimensions();
+  footer,
+}: React.PropsWithChildren<{
+  visible: boolean;
+  onClose: () => void;
+  title: string;
+  footer?: React.ReactNode;
+}>) {
+  const { width, height, isPhone } = useLayout();
+  const insets = useSafeAreaInsets();
   return (
     <Portal>
       <Modal
         visible={visible}
         onDismiss={onClose}
+        style={isPhone ? { justifyContent: 'flex-end', marginVertical: 0 } : undefined}
         contentContainerStyle={{
           backgroundColor: c.white,
-          padding: width < 500 ? 20 : 28,
+          padding: isPhone ? 20 : 28,
+          paddingBottom: isPhone ? Math.max(insets.bottom, 20) : 28,
           borderRadius: 24,
-          width: Math.min(width - 28, 600),
+          borderBottomLeftRadius: isPhone ? 0 : 24,
+          borderBottomRightRadius: isPhone ? 0 : 24,
+          width: isPhone ? width : Math.min(width - 48, 640),
           alignSelf: 'center',
-          maxHeight: height * 0.9,
+          maxHeight: Math.min(height - insets.top - 16, height * 0.92),
         }}
       >
         <View style={[s.row, { justifyContent: 'space-between', marginBottom: 18 }]}>
-          <T style={s.h2}>{title}</T>
+          <T style={[s.h2, { flex: 1 }]}>{title}</T>
           <IconButton icon="close" label="Close dialog" onPress={onClose} />
         </View>
-        <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+          style={{ flexShrink: 1 }}
+        >
           {children}
         </ScrollView>
+        {footer && (
+          <View style={{ paddingTop: 16, marginTop: 12, borderTopWidth: 1, borderColor: c.line }}>
+            {footer}
+          </View>
+        )}
       </Modal>
     </Portal>
   );
@@ -325,8 +361,9 @@ export function Empty({
   text,
   children,
 }: React.PropsWithChildren<{ icon?: string; title: string; text: string }>) {
+  const { isPhone } = useLayout();
   return (
-    <View style={{ alignItems: 'center', padding: 36, gap: 13 }}>
+    <View style={{ alignItems: 'center', padding: isPhone ? 20 : 36, gap: 13 }}>
       <View
         style={{
           width: 68,
@@ -349,25 +386,7 @@ export function Empty({
     </View>
   );
 }
-export function Loading() {
-  return (
-    <View style={{ gap: 20, padding: 30 }}>
-      <ActivityIndicator color={c.orange} />
-      <View style={{ height: 160, borderRadius: 22, backgroundColor: c.line }} />
-      <View style={s.row}>
-        {[0, 1, 2].map((i) => (
-          <View
-            key={i}
-            style={{ flex: 1, height: 230, borderRadius: 18, backgroundColor: c.line }}
-          />
-        ))}
-      </View>
-      <T muted style={{ textAlign: 'center' }}>
-        Getting things ready…
-      </T>
-    </View>
-  );
-}
+export { Loading } from './loading-skeleton';
 export function ErrorState({ message, retry }: { message: string; retry: () => void }) {
   return (
     <Empty icon="wifi-alert" title="We couldn't load that" text={message}>
@@ -389,7 +408,11 @@ export function FoodImage({ uri, style }: { uri: string; style?: StyleProp<ViewS
     <Image
       source={foodImageSource(uri)}
       accessibilityLabel="Meal photograph"
-      resizeMode="cover"
+      contentFit="cover"
+      allowDownscaling
+      cachePolicy="memory-disk"
+      recyclingKey={uri}
+      transition={0}
       onError={() => setFailedUri(uri)}
       style={style as any}
     />
@@ -398,8 +421,14 @@ export function FoodImage({ uri, style }: { uri: string; style?: StyleProp<ViewS
 export const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  h1: { fontFamily: fonts.display, fontSize: 30, letterSpacing: -1.1, color: c.ink },
-  h2: { fontFamily: fonts.bold, fontSize: 20, letterSpacing: -0.5 },
+  h1: {
+    fontFamily: fonts.display,
+    fontSize: 30,
+    lineHeight: 39,
+    letterSpacing: -0.8,
+    color: c.ink,
+  },
+  h2: { fontFamily: fonts.display, fontSize: 20, lineHeight: 28, letterSpacing: -0.4 },
   card: {
     backgroundColor: c.white,
     borderRadius: 18,
@@ -422,6 +451,7 @@ export const s = StyleSheet.create({
     paddingVertical: 11,
     borderRadius: 12,
     borderWidth: 1,
+    minHeight: 44,
   },
   input: {
     borderWidth: 1,

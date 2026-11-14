@@ -1,9 +1,10 @@
 import React from 'react';
-import { Pressable, View, useWindowDimensions } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { AdminHeader, DataPage, Metric, SalesChart } from '@/components/admin';
 import { Button, Empty, Icon, StatusBadge, T, s } from '@/components/ui';
 import { colors as c } from '@/constants/theme';
+import { useLayout } from '@/hooks/use-layout';
 import {
   collectedRevenue,
   dayKey,
@@ -14,7 +15,7 @@ import {
   time,
 } from '@/utils/domain';
 export default function Dashboard() {
-  const { width } = useWindowDimensions();
+  const { contentWidth } = useLayout();
   return (
     <DataPage>
       {(data) => {
@@ -78,7 +79,7 @@ export default function Dashboard() {
                 note="Freshly prepared and ready to go"
               />
             </View>
-            <View style={{ flexDirection: width > 1200 ? 'row' : 'column', gap: 23 }}>
+            <View style={{ flexDirection: contentWidth >= 1000 ? 'row' : 'column', gap: 23 }}>
               <View style={[s.card, { flex: 1 }]}>
                 <View style={[s.row, { justifyContent: 'space-between' }]}>
                   <View>
@@ -94,7 +95,7 @@ export default function Dashboard() {
                   Explore analytics
                 </Button>
               </View>
-              <View style={[s.card, { width: width > 1200 ? 300 : '100%' }]}>
+              <View style={[s.card, { width: contentWidth >= 1000 ? 300 : '100%' }]}>
                 <View style={[s.row, { justifyContent: 'space-between', marginBottom: 17 }]}>
                   <T style={s.h2}>Stock watch</T>
                   <Icon name="package-variant" color={c.orange} />

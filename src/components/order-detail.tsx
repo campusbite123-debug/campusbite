@@ -8,6 +8,7 @@ import { transitionOrder } from '@/services/repository';
 import { errorMessage, formatDate, money, statuses, time } from '@/utils/domain';
 import { colors as c, fonts } from '@/constants/theme';
 import { Button, Icon, Input, StatusBadge, T, s } from './ui';
+import { useLayout } from '@/hooks/use-layout';
 
 export function OrderDetail({
   order,
@@ -19,6 +20,7 @@ export function OrderDetail({
   admin?: boolean;
 }) {
   const { user } = useAuth();
+  const { isPhone } = useLayout();
   const toast = useToast();
   const client = useQueryClient();
   const [code, setCode] = useState('');
@@ -49,9 +51,9 @@ export function OrderDetail({
   const next = statuses[statuses.indexOf(order.status) + 1];
   return (
     <View>
-      <View style={[s.row, { justifyContent: 'space-between' }]}>
-        <View>
-          <T bold style={{ fontSize: 18 }}>
+      <View style={[s.row, { justifyContent: 'space-between', alignItems: 'flex-start' }]}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <T bold style={{ fontSize: isPhone ? 16 : 18 }}>
             {order.order_number}
           </T>
           <T muted style={{ fontSize: 11, marginTop: 5 }}>
@@ -173,7 +175,9 @@ export function OrderDetail({
       <View style={s.divider} />
       <View style={[s.row, { justifyContent: 'space-between' }]}>
         <T bold>Total amount</T>
-        <T style={{ fontFamily: fonts.display, fontSize: 25 }}>{money(order.total)}</T>
+        <T style={{ fontFamily: fonts.bold, fontVariant: ['tabular-nums'], fontSize: 25 }}>
+          {money(order.total)}
+        </T>
       </View>
       <View style={[s.row, { justifyContent: 'space-between', marginTop: 10 }]}>
         <T muted style={{ fontSize: 11 }}>
@@ -204,7 +208,18 @@ export function OrderDetail({
           <T muted style={{ fontSize: 9, letterSpacing: 2 }}>
             YOUR UNIQUE PICKUP CODE
           </T>
-          <T selectable style={{ fontFamily: fonts.display, fontSize: 30, letterSpacing: 5 }}>
+          <T
+            selectable
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.65}
+            style={{
+              fontFamily: fonts.bold,
+              fontVariant: ['tabular-nums'],
+              fontSize: 30,
+              letterSpacing: 4,
+            }}
+          >
             {order.pickup_code}
           </T>
           <T muted style={{ fontSize: 10 }}>

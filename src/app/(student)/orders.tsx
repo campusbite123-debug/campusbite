@@ -25,7 +25,7 @@ export default function Orders() {
   const selected = params.id ?? '';
   const setSelected = (id: string | null) => router.setParams({ id: id ?? '', placed: '' });
   const [tab, setTab] = useState('Active');
-  if (isLoading) return <Loading />;
+  if (isLoading) return <Loading inShell variant="list" label="Loading your orders" />;
   if (error || !data)
     return <ErrorState message={errorMessage(error)} retry={() => void refetch()} />;
   const orders = data.orders

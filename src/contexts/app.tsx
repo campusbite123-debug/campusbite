@@ -2,13 +2,15 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState, Platform } from 'react-native';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Portal, Snackbar } from 'react-native-paper';
+import { Portal } from 'react-native-paper';
+import { router } from 'expo-router';
 import * as Linking from 'expo-linking';
 import * as Crypto from 'expo-crypto';
 import { supabase, configurationError } from '@/services/supabase';
 import { loadSnapshot, subscribeChanges } from '@/services/repository';
 import { errorMessage, registrationSchema } from '@/utils/domain';
 import type { CartLine, DailyMenu, SessionUser } from '@/types';
+import { AppToast, type ToastNotice, type ToastOptions } from '@/components/app-toast';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 10000 }, mutations: { retry: false } },
@@ -25,7 +27,7 @@ type AuthContextValue = {
   finishRecovery: () => void;
 };
 const AuthContext = createContext<AuthContextValue>(null!);
-const ToastContext = createContext<(message: string) => void>(() => {});
+const ToastContext = createContext<(message: string, options?: ToastOptions) => void>(() => {});
 const CartContext = createContext<{
   lines: CartLine[];
   add: (menu: DailyMenu, quantity?: number) => void;
@@ -43,37 +45,46 @@ function AuthProvider({ children }: React.PropsWithChildren) {
   const [recovering, setRecovering] = useState(false);
   const generation = useRef(0);
   const refreshUser = useCallback(async () => {
-    if (!supabase) return;
-    const run = ++generation.current;
-    const { data, error } = await supabase.auth.getSession();
-    if (error) throw error;
-    if (!data.session) {
-      if (run === generation.current) setUser(null);
+    if (!supabase) {
+      setLoading(false);
       return;
     }
-    const [p, r] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', data.session.user.id).single(),
-      supabase.from('user_roles').select('role').eq('user_id', data.session.user.id).single(),
-    ]);
-    if (p.error || r.error)
-      throw new Error('Your account profile could not be loaded. Please sign in again.');
-    if (!['CUSTOMER', 'ADMIN'].includes(r.data.role))
-      throw new Error('Your account does not have a valid role. Contact the canteen.');
-    if (run === generation.current) {
-      setUser({ ...p.data, role: r.data.role });
-      setAuthError(null);
+    const run = ++generation.current;
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      if (!data.session) {
+        if (run === generation.current) setUser(null);
+        return;
+      }
+      const [p, r] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', data.session.user.id).single(),
+        supabase.from('user_roles').select('role').eq('user_id', data.session.user.id).single(),
+      ]);
+      if (p.error || r.error)
+        throw new Error('Your account profile could not be loaded. Please sign in again.');
+      if (!['CUSTOMER', 'ADMIN'].includes(r.data.role))
+        throw new Error('Your account does not have a valid role. Contact the canteen.');
+      if (run === generation.current) {
+        setUser({ ...p.data, role: r.data.role });
+        setAuthError(null);
+      }
+    } finally {
+      // Startup and Auth events can overlap. Only the latest profile lookup may
+      // unlock routing, otherwise a saved session can briefly look signed out.
+      if (run === generation.current) setLoading(false);
     }
   }, []);
   useEffect(() => {
     Promise.resolve()
       .then(refreshUser)
-      .catch((e) => setAuthError(errorMessage(e)))
-      .finally(() => setLoading(false));
+      .catch((e) => setAuthError(errorMessage(e)));
     const sub = supabase?.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') setRecovering(true);
       if (!session) {
         generation.current++;
         setUser(null);
+        setLoading(false);
         queryClient.clear();
       } else
         setTimeout(() => {
@@ -260,14 +271,22 @@ function UserCartProvider({ children }: React.PropsWithChildren) {
   const add = (menu: DailyMenu, quantity = 1) => {
     const current = lines.find((l) => l.daily_menu_id === menu.id)?.quantity ?? 0;
     if (!menu.is_available || quantity < 1 || current + quantity > Math.min(menu.quantity, 99)) {
-      toast('There is not enough stock for that quantity.');
+      toast('There is not enough stock for that quantity.', {
+        title: 'Check your bag',
+        tone: 'error',
+      });
       return;
     }
     setLines((old) => [
       ...old.filter((l) => l.daily_menu_id !== menu.id),
       { daily_menu_id: menu.id, quantity: current + quantity },
     ]);
-    toast('Added to your bag. Good choice!');
+    toast('Good choice! Your meal is in your bag.', {
+      title: 'Added to your bag',
+      tone: 'success',
+      icon: 'shopping-outline',
+      action: { label: 'View bag', onPress: () => router.push('/cart') },
+    });
   };
   return (
     <CartContext.Provider
@@ -290,10 +309,17 @@ function UserCartProvider({ children }: React.PropsWithChildren) {
   );
 }
 export function Providers({ children }: React.PropsWithChildren) {
-  const [message, setMessage] = useState('');
+  const [notice, setNotice] = useState<ToastNotice | null>(null);
+  const nextNoticeId = useRef(0);
+  const toast = useCallback((message: string, options: ToastOptions = {}) => {
+    setNotice(message ? { ...options, message, id: ++nextNoticeId.current } : null);
+  }, []);
+  const dismiss = useCallback((id: number) => {
+    setNotice((current) => (current?.id === id ? null : current));
+  }, []);
   return (
     <QueryClientProvider client={queryClient}>
-      <ToastContext.Provider value={setMessage}>
+      <ToastContext.Provider value={toast}>
         <AuthProvider>
           <DataProvider>
             <CartProvider>
@@ -301,14 +327,7 @@ export function Providers({ children }: React.PropsWithChildren) {
             </CartProvider>
           </DataProvider>
         </AuthProvider>
-        <Snackbar
-          visible={!!message}
-          duration={4500}
-          onDismiss={() => setMessage('')}
-          action={{ label: 'Dismiss', onPress: () => setMessage('') }}
-        >
-          {message}
-        </Snackbar>
+        <AppToast notice={notice} onDismiss={dismiss} />
       </ToastContext.Provider>
     </QueryClientProvider>
   );

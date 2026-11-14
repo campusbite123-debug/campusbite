@@ -1,4 +1,12 @@
-import { MD3LightTheme } from 'react-native-paper';
+import { configureFonts, MD3LightTheme } from 'react-native-paper';
+export const fonts = {
+  regular: 'Inter_400Regular',
+  medium: 'Inter_500Medium',
+  semibold: 'Inter_600SemiBold',
+  bold: 'Inter_700Bold',
+  display: 'PlusJakartaSans_700Bold',
+};
+const paperFonts = configureFonts({ config: { fontFamily: fonts.regular, fontWeight: '400' } });
 export const colors = {
   orange: '#F56B28',
   orangeDark: '#D94F12',
@@ -15,6 +23,21 @@ export const colors = {
 export const theme = {
   ...MD3LightTheme,
   roundness: 4,
+  fonts: {
+    ...paperFonts,
+    displayLarge: { ...paperFonts.displayLarge, fontFamily: fonts.display },
+    displayMedium: { ...paperFonts.displayMedium, fontFamily: fonts.display },
+    displaySmall: { ...paperFonts.displaySmall, fontFamily: fonts.display },
+    headlineLarge: { ...paperFonts.headlineLarge, fontFamily: fonts.display },
+    headlineMedium: { ...paperFonts.headlineMedium, fontFamily: fonts.display },
+    headlineSmall: { ...paperFonts.headlineSmall, fontFamily: fonts.display },
+    titleLarge: { ...paperFonts.titleLarge, fontFamily: fonts.display },
+    titleMedium: { ...paperFonts.titleMedium, fontFamily: fonts.semibold },
+    titleSmall: { ...paperFonts.titleSmall, fontFamily: fonts.semibold },
+    labelLarge: { ...paperFonts.labelLarge, fontFamily: fonts.semibold },
+    labelMedium: { ...paperFonts.labelMedium, fontFamily: fonts.medium },
+    labelSmall: { ...paperFonts.labelSmall, fontFamily: fonts.medium },
+  },
   colors: {
     ...MD3LightTheme.colors,
     primary: colors.orange,
@@ -25,11 +48,4 @@ export const theme = {
     outline: '#DCDDD4',
     error: colors.red,
   },
-};
-export const fonts = {
-  regular: 'DMSans_400Regular',
-  medium: 'DMSans_500Medium',
-  semibold: 'DMSans_600SemiBold',
-  bold: 'DMSans_700Bold',
-  display: 'Manrope_800ExtraBold',
 };

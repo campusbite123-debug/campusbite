@@ -11,5 +11,6 @@ const photos: Record<string, ImageSourcePropType> = {
   'photo-1556679343-c7306c1976bc': require('../../assets/meals/tea.jpg'),
   'photo-1602143407151-7111542de6e8': require('../../assets/meals/water.jpg'),
 };
+const photoEntries = Object.entries(photos);
 export const foodImageSource = (uri: string): ImageSourcePropType =>
-  Object.entries(photos).find(([id]) => uri.includes(id))?.[1] ?? { uri };
+  photoEntries.find(([id]) => uri.includes(id))?.[1] ?? { uri };

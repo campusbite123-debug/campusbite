@@ -5,7 +5,10 @@ import { Button, Empty, Input, Pill, T, s } from '@/components/ui';
 import { colors as c } from '@/constants/theme';
 import { collectedRevenue, csv, dayKey, formatDate, futureDay, money } from '@/utils/domain';
 import { exportCSV } from '@/services/media';
+import { useLayout } from '@/hooks/use-layout';
 export default function Analytics() {
+  const { isPhone, fontScale } = useLayout();
+  const stackDates = isPhone && fontScale > 1.2;
   const { run, busy } = useAction();
   const [period, setPeriod] = useState(7);
   const [from, setFrom] = useState(futureDay(-6));
@@ -76,7 +79,7 @@ export default function Analytics() {
                 </Button>
               }
             />
-            <View style={[s.row, { flexWrap: 'wrap', marginBottom: 22 }]}>
+            <View style={[s.row, { flexWrap: 'wrap', gap: isPhone ? 8 : 12, marginBottom: 22 }]}>
               {[
                 [1, 'Today'],
                 [7, 'Last 7 days'],
@@ -95,10 +98,21 @@ export default function Analytics() {
                 </Pill>
               ))}
             </View>
-            <View style={[s.row, { maxWidth: 520, alignItems: 'flex-start' }]}>
-              <View style={{ flex: 1 }}>
+            <View
+              style={[
+                s.row,
+                {
+                  maxWidth: 520,
+                  alignItems: 'stretch',
+                  flexDirection: stackDates ? 'column' : 'row',
+                  gap: stackDates ? 0 : 12,
+                },
+              ]}
+            >
+              <View style={{ flex: stackDates ? undefined : 1 }}>
                 <Input
-                  label="From (YYYY-MM-DD)"
+                  label={isPhone ? 'From date' : 'From (YYYY-MM-DD)'}
+                  placeholder="YYYY-MM-DD"
                   value={from}
                   onChangeText={(v) => {
                     setFrom(v);
@@ -106,9 +120,10 @@ export default function Analytics() {
                   }}
                 />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: stackDates ? undefined : 1 }}>
                 <Input
-                  label="Through (YYYY-MM-DD)"
+                  label={isPhone ? 'To date' : 'Through (YYYY-MM-DD)'}
+                  placeholder="YYYY-MM-DD"
                   value={until}
                   onChangeText={(v) => {
                     setUntil(v);
