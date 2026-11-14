@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Campusbite",
-    "slug": "campus-canteen",
+    "slug": "campusbite",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -49,6 +49,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f95aa4e3-7f4c-43ef-970f-7884041a4741"
+      }
+    },
+    "owner": "campusbites-team"
   }
 }
