@@ -6,6 +6,7 @@ One Expo SDK 57 / React Native / TypeScript application serves Android, iOS and 
 
 - `src/app/(student)`: home, menu, cart/checkout, order tracking/receipts and profile.
 - `src/app/admin`: dashboard, order queue, menu/scheduling, inventory, reports, accounts and settings.
+- `src/app/index.tsx`: food-photo welcome screen for signed-out visitors; saved sessions and recovery links route directly to their authorized destination.
 - `src/app/login.tsx`, `register.tsx`, `forgot-password.tsx`, `reset-password.tsx`: account flows.
 - `src/components`: reusable presentation components and forms. React Native Paper provides modal, checkbox, switch and theme primitives; the app supplies its own accessible toast cards.
 - `src/hooks/use-layout.ts`: shared navigation, spacing and available-content measurements.
@@ -23,6 +24,8 @@ One Expo SDK 57 / React Native / TypeScript application serves Android, iOS and 
 
 Typography uses bundled Plus Jakarta Sans Bold for headings and Inter in four weights for readable interface text and tabular prices/codes. The same family mapping is applied to React Native Paper components. Only the five required weights are imported; font license notices are kept under `assets/fonts`.
 
+Authentication screens share a food photograph and curved cream form panel. Phones stack the photo above the form; tablets center a rounded card; wider screens place the food story beside the form over a soft photographic backdrop. The decorative image and its generation prompt are bundled under `assets/auth`. Account fields retain their labels, autofill and validation, with visible focus borders and password visibility controls. Header back buttons return login to the welcome screen and signup/recovery to sign-in, including direct-entry URLs.
+
 Catalog columns use the measured grid width, accounting for navigation, page padding and the optional desktop bag panel. Controls have 44px minimum touch targets. Phone checkout keeps its action above the bottom tabs; meal dialogs use a bottom sheet with a fixed quantity/action footer. Forms scroll around the keyboard and respect safe areas. Tablet rotation and split-screen keep the same cart state.
 
 Meal cards use inset photos, category labels, preparation-time chips and a separate price/Add footer. Wider cards include a short description; narrow cards keep the full details in the meal sheet. A photo badge shows the quantity already in the bag. Add is disabled for sold-out stock, paused ordering, unavailable pickups or the existing stock/99-item bag limit; server checkout still validates availability.
@@ -32,6 +35,8 @@ The home banner cycles through up to four active featured meals every 6.5 second
 Meal lookup/popularity indexes, filtered results and pickup availability are memoized; search uses a deferred value so input stays responsive. Availability is refreshed on each snapshot fetch, including when unchanged data is structurally shared. Server checkout remains the final authority for time, price and stock. Expo Image caches photos in memory and on disk, and downscales them for their displayed size.
 
 Only the latest overlapping Auth profile lookup can finish initial session loading. This prevents deep links from briefly redirecting through login on a reload. The initial loading tree stays identical during static rendering and browser hydration.
+
+Explicit sign-in and sign-out requests show a shared modal loading screen, dismiss the keyboard and prevent repeated submissions. Sign-in keeps that screen visible through profile/role lookup; sign-out covers every navigation entry point. Both release the screen on failure so the existing form or workspace can show the error and allow a retry.
 
 The shared loading skeleton uses menu, list and workspace layouts with a single opacity animation. It uses the native animation driver on devices, pauses in the background, respects reduced-motion changes and cleans up on unmount. Decorative placeholders contain no text or font dependencies, and one accessible progress indicator describes the busy state.
 

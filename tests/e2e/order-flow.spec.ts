@@ -218,6 +218,8 @@ test('one login form has no role chooser, preset credentials or legacy demo bypa
     ),
   );
   await page.goto('/');
+  await expect(page.getByTestId('welcome-screen')).toBeVisible();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).toHaveURL(/\/login/);
   await expect(page.getByRole('textbox', { name: 'Campus email', exact: true })).toHaveValue('');
   await expect(page.getByRole('textbox', { name: 'Password', exact: true })).toHaveValue('');

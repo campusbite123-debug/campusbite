@@ -16,7 +16,9 @@ In this workspace, set `$env:PLAYWRIGHT_BROWSERS_PATH = 'D:\Campus Canteen Syste
 
 Coverage:
 
+- Food-photo welcome page, reachable Sign in/Create an account actions, header/browser back navigation, direct login entry and saved-session routing on phone, tablet and desktop.
 - Shared email/password login, blank credentials, masked password and no role chooser/admin hints.
+- Full-screen sign-in/sign-out loading on phone and desktop for both roles, including slow profile loading, failed credentials and a failed logout followed by a retry.
 - Signup without a student ID, a generated internal account reference, and a profile without student ID fields.
 - Desktop and mobile order confirmation with pickup code, time/location, itemized receipt and a working Track my order action.
 - Compact bag notifications on desktop/mobile, close and View bag actions, automatic dismissal and repeated notifications.

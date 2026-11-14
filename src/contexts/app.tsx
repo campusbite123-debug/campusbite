@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppState, Platform } from 'react-native';
+import { AppState, Keyboard, Platform } from 'react-native';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Portal } from 'react-native-paper';
 import { router } from 'expo-router';
@@ -11,6 +11,7 @@ import { loadSnapshot, subscribeChanges } from '@/services/repository';
 import { errorMessage, registrationSchema } from '@/utils/domain';
 import type { CartLine, DailyMenu, SessionUser } from '@/types';
 import { AppToast, type ToastNotice, type ToastOptions } from '@/components/app-toast';
+import { AuthLoading } from '@/components/auth-loading';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 10000 }, mutations: { retry: false } },
@@ -43,6 +44,8 @@ function AuthProvider({ children }: React.PropsWithChildren) {
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(configurationError);
   const [recovering, setRecovering] = useState(false);
+  const [authAction, setAuthAction] = useState<'login' | 'logout' | null>(null);
+  const authRequest = useRef<Promise<void> | null>(null);
   const generation = useRef(0);
   const refreshUser = useCallback(async () => {
     if (!supabase) {
@@ -88,7 +91,8 @@ function AuthProvider({ children }: React.PropsWithChildren) {
         queryClient.clear();
       } else
         setTimeout(() => {
-          void refreshUser().catch((e) => setAuthError(errorMessage(e)));
+          // Login already waits for its profile before dismissing the loading screen.
+          if (!authRequest.current) void refreshUser().catch((e) => setAuthError(errorMessage(e)));
         }, 0);
     });
     async function handleURL(url: string) {
@@ -127,11 +131,23 @@ function AuthProvider({ children }: React.PropsWithChildren) {
       link?.remove();
     };
   }, [refreshUser]);
-  async function login(email: string, password: string) {
-    if (!supabase) throw new Error(configurationError ?? 'Supabase is not configured.');
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    if (error) throw error;
-    await refreshUser();
+  function runAuthAction(action: 'login' | 'logout', request: () => Promise<void>) {
+    if (authRequest.current) return authRequest.current;
+    Keyboard.dismiss();
+    setAuthAction(action);
+    authRequest.current = request().finally(() => {
+      authRequest.current = null;
+      setAuthAction(null);
+    });
+    return authRequest.current;
+  }
+  function login(email: string, password: string) {
+    return runAuthAction('login', async () => {
+      if (!supabase) throw new Error(configurationError ?? 'Supabase is not configured.');
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (error) throw error;
+      await refreshUser();
+    });
   }
   async function register(values: any) {
     const clean = registrationSchema.parse(values);
@@ -160,16 +176,16 @@ function AuthProvider({ children }: React.PropsWithChildren) {
       ? 'Your account is ready.'
       : 'Check your email to confirm your account, then sign in.';
   }
-  async function logout() {
-    if (!supabase) {
+  function logout() {
+    return runAuthAction('logout', async () => {
+      if (supabase) {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+      }
+      generation.current++;
       queryClient.clear();
       setUser(null);
-      return;
-    }
-    const { error } = await supabase!.auth.signOut();
-    if (error) throw error;
-    queryClient.clear();
-    setUser(null);
+    });
   }
   return (
     <AuthContext.Provider
@@ -186,6 +202,7 @@ function AuthProvider({ children }: React.PropsWithChildren) {
       }}
     >
       {children}
+      <AuthLoading action={authAction} />
     </AuthContext.Provider>
   );
 }

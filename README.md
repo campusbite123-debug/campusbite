@@ -12,9 +12,9 @@ npm install
 npm run web
 ```
 
-Open http://localhost:8081. The app shows a single email-and-password form. It has no preset credentials, role selectors, administrator signup controls, demo entry or automatic demo sessions. A valid persisted Supabase session may reopen its authorized workspace.
+Open http://localhost:8081. Signed-out visitors see a food-themed welcome screen with Sign in and Create an account actions. Sign in opens the single email-and-password form. It has no preset credentials, role selectors, administrator signup controls, demo entry or automatic demo sessions. A valid persisted Supabase session may reopen its authorized workspace.
 
-Without Supabase configuration, the login remains visible and private routes remain locked. The former `EXPO_PUBLIC_DEMO_MODE` setting and old demo sessions no longer grant access.
+Without Supabase configuration, the welcome and login pages remain accessible and private routes remain locked. The former `EXPO_PUBLIC_DEMO_MODE` setting and old demo sessions no longer grant access.
 
 For a phone, run `npm start` and scan the Expo QR code on the same network. SDK 57 targets a compatible Expo Go version; see [Expo's setup guide](https://docs.expo.dev/get-started/create-a-project/). Use a development build if your installed Expo Go does not support it. To preview a production web export, run `npm run build:web`, then `npm run preview:web`. Stop another server using port 8081 first.
 

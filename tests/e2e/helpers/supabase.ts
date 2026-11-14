@@ -237,11 +237,14 @@ export async function mockSupabase(context: BrowserContext) {
   await attach(context);
   return { attach, data };
 }
-export async function signIn(page: Page, role: 'student' | 'admin') {
+export async function fillLogin(page: Page, role: 'student' | 'admin') {
   await page.goto('/login');
   await expect(page.getByText('Welcome back.', { exact: true })).toBeVisible();
   await page.getByRole('textbox', { name: 'Campus email', exact: true }).fill(accounts[role].email);
   await page.getByRole('textbox', { name: 'Password', exact: true }).fill(accounts[role].password);
+}
+export async function signIn(page: Page, role: 'student' | 'admin') {
+  await fillLogin(page, role);
   await page.getByRole('button', { name: /^Sign in/ }).click();
   await expect(
     page.getByText(role === 'admin' ? 'A good day starts here.' : 'What are you craving today?', {
@@ -249,7 +252,7 @@ export async function signIn(page: Page, role: 'student' | 'admin') {
     }),
   ).toBeVisible();
 }
-export async function signOut(page: Page) {
+export async function clickSignOut(page: Page) {
   const sidebar = page.viewportSize()!.width >= 768;
   if (sidebar) await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   else {
@@ -258,5 +261,8 @@ export async function signOut(page: Page) {
     else await page.getByRole('tab', { name: 'More', exact: true }).click();
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   }
+}
+export async function signOut(page: Page) {
+  await clickSignOut(page);
   await expect(page).toHaveURL(/\/login/);
 }
