@@ -13,6 +13,7 @@ import { PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans/70
 import { Providers } from '@/contexts/app';
 import { theme } from '@/constants/theme';
 import { Loading } from '@/components/ui';
+import { AppUpdatePrompt } from '@/components/app-update-prompt';
 export default function RootLayout() {
   const [loaded, error] = useFonts({
     Inter_400Regular,
@@ -28,15 +29,18 @@ export default function RootLayout() {
         {!loaded && !error ? (
           <Loading />
         ) : (
-          <Providers>
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                animation: 'fade',
-                contentStyle: { backgroundColor: '#FAF9F6' },
-              }}
-            />
-          </Providers>
+          <>
+            <Providers>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  animation: 'fade',
+                  contentStyle: { backgroundColor: '#FAF9F6' },
+                }}
+              />
+            </Providers>
+            <AppUpdatePrompt />
+          </>
         )}
       </PaperProvider>
     </SafeAreaProvider>

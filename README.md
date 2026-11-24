@@ -94,4 +94,15 @@ The database suite executes all migrations/RLS in PGlite PostgreSQL. The tests a
 
 The active app shows ready banners/live tracking. Students can enable a local device notification for a received ready update. Remote push delivery while the app is closed is not implemented.
 
+### Publish an optional app update
+
+Campusbite checks for releases at launch, on returning to the app, and every 30 minutes while open. **Update now** opens the native download link or refreshes the current web page. **Remind me tomorrow** hides that release on the device for 24 hours. Installed apps must already include the update prompt to receive future announcements.
+
+Edit [public/app-releases.json](./public/app-releases.json) to announce a release.
+
+- **Android and iOS** — After the new build is available, set its platform entry to an object with the published `version` and an HTTPS `url` for the APK installation page or store listing. Include `build` as a string to announce a higher Android version code or iOS build number with the same version. For example, an Android release can use `{ "version": "1.1.0", "build": "12", "url": "https://your-release-host.example/campusbite-1.1.0.apk" }`. Replace the example URL with the actual download link. Leave an unpublished platform set to `null`.
+- **Web** — Increase `web.version` before exporting the new site. The export embeds that version and serves the same file to older browser sessions.
+
+Run `npm run build:web` and deploy the export to the existing production site at `https://campusbite.expo.app`. Mobile installations read the release file from that site. Each web deployment reads its own copy.
+
 Read [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for the module map and transaction rules. Photo attribution is accessible from Profile and [assets/meals/CREDITS.md](./assets/meals/CREDITS.md). All meal images are editable. The full administration snapshot is suitable for a campus project; larger deployments should add server-paginated order/report queries.
