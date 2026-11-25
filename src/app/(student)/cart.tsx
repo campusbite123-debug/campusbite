@@ -38,7 +38,7 @@ export default function Cart() {
   if (error || !data)
     return <ErrorState message={errorMessage(error)} retry={() => void refetch()} />;
   const slots = validSlots(data, lines);
-  const chosen = slots.find((s) => s.id === slotId);
+  const chosen = slots.find((s) => s.id === slotId) ?? slots[0];
   const dates = [...new Set(slots.map((s) => formatDate(s.starts_at, { weekday: 'short' })))];
   async function checkout() {
     if (locked.current || !chosen || !user) return;
@@ -215,10 +215,11 @@ export default function Cart() {
           <View
             style={[s.card, { width: twoPane ? 350 : '100%', gap: 14, padding: isPhone ? 16 : 20 }]}
           >
-            <T style={s.h2}>Make it your time</T>
+            <T style={s.h2}>Pickup time</T>
             <T muted style={{ fontSize: 11, lineHeight: 18 }}>
-              Pickup times account for meal preparation, stock and canteen hours. All times are in
-              Manila.
+              {chosen
+                ? `Pickup at ${time(chosen.pickup_at)} (Manila time). The earliest available time is selected automatically. You can choose another below.`
+                : 'All pickup times are in Manila time.'}
             </T>
             {!slots.length && (
               <T style={{ color: c.orangeDark, fontSize: 12, lineHeight: 20 }}>
@@ -237,10 +238,10 @@ export default function Cart() {
                     .map((slot) => (
                       <Pill
                         key={slot.id}
-                        selected={slotId === slot.id}
+                        selected={chosen?.id === slot.id}
                         onPress={() => setSlotId(slot.id)}
                       >
-                        {time(slot.starts_at)}
+                        {time(slot.pickup_at)}
                       </Pill>
                     ))}
                 </View>

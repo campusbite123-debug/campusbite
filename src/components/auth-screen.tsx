@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Redirect, router } from 'expo-router';
+import { Redirect, router, useIsFocused } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,6 +12,7 @@ import { colors as c, fonts } from '@/constants/theme';
 import { Button, T } from './ui';
 import { AuthLayout } from './auth-layout';
 import { AuthField } from './auth-field';
+import { openWithSignInTransition, signInLayoutReady } from '@/utils/sign-in-transition';
 const loginSchema = z.object({
   email: z.email('Enter a valid email address.'),
   password: z.string().min(1, 'Enter your password.'),
@@ -24,6 +25,10 @@ export function AuthScreen({
   forgot?: boolean;
 }) {
   const auth = useAuth();
+  const focused = useIsFocused();
+  useLayoutEffect(() => {
+    if (focused) signInLayoutReady();
+  }, [focused]);
   const toast = useToast();
   const [error, setError] = useState('');
   const {
@@ -85,7 +90,13 @@ export function AuthScreen({
     );
   return (
     <AuthLayout
-      onBack={() => router.dismissTo(register || forgot ? '/login' : '/')}
+      register={register}
+      onBack={() => {
+        if (register)
+          openWithSignInTransition(() => router.dismissTo('/login'), 'login', 'register');
+        else if (forgot) router.dismissTo('/login');
+        else openWithSignInTransition(() => router.dismissTo('/'), 'welcome');
+      }}
       backLabel={register || forgot ? 'Return to sign in' : 'Back to welcome'}
     >
       <View style={styles.intro}>
@@ -173,7 +184,12 @@ export function AuthScreen({
       )}
       <Pressable
         accessibilityRole="button"
-        onPress={() => router.push(register || forgot ? '/login' : '/register')}
+        onPress={() => {
+          if (forgot) router.push('/login');
+          else if (register)
+            openWithSignInTransition(() => router.dismissTo('/login'), 'login', 'register');
+          else openWithSignInTransition(() => router.push('/register'), 'register', 'login');
+        }}
         style={styles.accountLink}
       >
         <T style={{ color: '#7E8175', fontSize: 12, textAlign: 'center', lineHeight: 20 }}>

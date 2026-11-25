@@ -154,16 +154,16 @@ export function createSeed(): Snapshot {
       id: `${futureDay(i)}-${m.id}`,
       meal_id: m.id,
       service_date: futureDay(i),
-      available_from: '07:00:00',
-      available_until: '20:00:00',
+      available_from: '05:00:00',
+      available_until: '19:00:00',
       is_available: true,
       quantity: [28, 18, 24, 16, 32, 7, 45, 60][j],
       low_stock_threshold: 8,
     })),
   ).flat();
   const slots = Array.from({ length: 7 }, (_, d) =>
-    Array.from({ length: 26 }, (_, i) => {
-      const h = 7 + Math.floor(i / 2);
+    Array.from({ length: 28 }, (_, i) => {
+      const h = 5 + Math.floor(i / 2);
       const minute = i % 2 ? '30' : '00';
       const end = new Date(`${futureDay(d)}T${String(h).padStart(2, '0')}:${minute}:00+08:00`);
       end.setMinutes(end.getMinutes() + 30);
@@ -188,8 +188,8 @@ export function createSeed(): Snapshot {
     settings: {
       name: 'Campus Canteen',
       pickup_location: 'Main Canteen · Pickup Counter 1',
-      opens_at: '07:00:00',
-      closes_at: '20:00:00',
+      opens_at: '05:00:00',
+      closes_at: '19:00:00',
       accepting_orders: true,
     },
   };
@@ -243,7 +243,7 @@ export class DemoEngine {
       student_id: user.student_id,
       created_at: new Date(this.now()).toISOString(),
       pickup_slot_id: slot.id,
-      pickup_at: slot.starts_at,
+      pickup_at: slot.pickup_at,
       pickup_code: this.newId().slice(0, 8).toUpperCase(),
       status: 'Pending',
       payment_collected: false,

@@ -7,7 +7,7 @@ import { AdminHeader, DataPage, useAction } from '@/components/admin';
 import { Button, Input, Pill, Sheet, T, s } from '@/components/ui';
 import { colors as c } from '@/constants/theme';
 import type { Settings, Slot, Snapshot } from '@/types';
-import { dayKey, formatDate, futureDay, time } from '@/utils/domain';
+import { clockTime, dayKey, formatDate, futureDay, time, upcomingSlotsOnDay } from '@/utils/domain';
 import { useLayout } from '@/hooks/use-layout';
 function SettingsForm({ settings }: { settings: Settings }) {
   const { isPhone } = useLayout();
@@ -86,41 +86,16 @@ function SettingsForm({ settings }: { settings: Settings }) {
     </View>
   );
 }
-function SlotEditor({ slot, onClose }: { slot: Slot | null; onClose: () => void }) {
+function SlotEditor({ slot, onClose }: { slot: Slot; onClose: () => void }) {
   const { user } = useAuth();
   const { busy, run } = useAction();
-  const [date, setDate] = useState(slot ? dayKey(new Date(slot.starts_at)) : futureDay(1));
-  const [start, setStart] = useState(
-    slot
-      ? new Date(slot.starts_at).toLocaleTimeString('en-GB', {
-          timeZone: 'Asia/Manila',
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-      : '12:00',
-  );
-  const [end, setEnd] = useState(
-    slot
-      ? new Date(slot.ends_at).toLocaleTimeString('en-GB', {
-          timeZone: 'Asia/Manila',
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-      : '12:30',
-  );
-  const [capacity, setCapacity] = useState(String(slot?.capacity ?? 20));
-  const [active, setActive] = useState(slot?.is_active ?? true);
+  const [capacity, setCapacity] = useState(String(slot.capacity));
+  const [active, setActive] = useState(slot.is_active);
   return (
     <>
-      <Input label="Pickup date (YYYY-MM-DD)" value={date} onChangeText={setDate} />
-      <View style={s.row}>
-        <View style={{ flex: 1 }}>
-          <Input label="Starts (HH:MM)" value={start} onChangeText={setStart} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Input label="Ends (HH:MM)" value={end} onChangeText={setEnd} />
-        </View>
-      </View>
+      <T style={{ marginBottom: 15 }}>
+        {formatDate(slot.starts_at)} · {time(slot.starts_at)} – {time(slot.ends_at)} (Manila time)
+      </T>
       <Input
         label="Maximum orders (1–500)"
         keyboardType="number-pad"
@@ -131,7 +106,7 @@ function SlotEditor({ slot, onClose }: { slot: Slot | null; onClose: () => void 
         <T>Slot open for new orders</T>
         <Switch value={active} color={c.orange} onValueChange={setActive} />
       </View>
-      {!!slot?.reserved && (
+      {!!slot.reserved && (
         <T muted style={{ fontSize: 11, lineHeight: 19, marginBottom: 17 }}>
           This slot has {slot.reserved} reservations. You can close it to new orders or adjust
           capacity; booked pickup times are protected.
@@ -141,23 +116,7 @@ function SlotEditor({ slot, onClose }: { slot: Slot | null; onClose: () => void 
         loading={busy}
         onPress={() =>
           void run(
-            async () => {
-              if (
-                !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
-                ![start, end].every((v) => /^([01]\d|2[0-3]):[0-5]\d$/.test(v))
-              )
-                throw new Error('Check the date and 24-hour times.');
-              await saveSlot(
-                {
-                  id: slot?.id,
-                  starts_at: `${date}T${start}:00+08:00`,
-                  ends_at: `${date}T${end}:00+08:00`,
-                  capacity: Number(capacity),
-                  is_active: active,
-                },
-                user!,
-              );
-            },
+            () => saveSlot(slot, Number(capacity), active, user!),
             'Pickup slot saved.',
             onClose,
           )
@@ -170,17 +129,15 @@ function SlotEditor({ slot, onClose }: { slot: Slot | null; onClose: () => void 
 }
 function Slots({ data }: { data: Snapshot }) {
   const [date, setDate] = useState(dayKey());
-  const [edit, setEdit] = useState<Slot | null | undefined>(undefined);
+  const [edit, setEdit] = useState<Slot | null>(null);
+  const slots = upcomingSlotsOnDay(data.slots, date);
   return (
     <View style={[s.card, { marginTop: 23 }]}>
-      <View
-        style={[s.row, { justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 20 }]}
-      >
-        <T style={s.h2}>Pickup schedules</T>
-        <Button small secondary icon="plus" onPress={() => setEdit(null)}>
-          Add time slot
-        </Button>
-      </View>
+      <T style={[s.h2, { marginBottom: 12 }]}>Pickup schedules</T>
+      <T muted style={{ marginBottom: 15 }}>
+        Pickup slots are scheduled automatically every day from {clockTime(data.settings.opens_at)}{' '}
+        to {clockTime(data.settings.closes_at)} (Manila time), in 30-minute intervals.
+      </T>
       <View style={[s.wrap, { marginBottom: 18 }]}>
         {Array.from({ length: 7 }, (_, i) => (
           <Pill key={i} selected={date === futureDay(i)} onPress={() => setDate(futureDay(i))}>
@@ -188,41 +145,34 @@ function Slots({ data }: { data: Snapshot }) {
           </Pill>
         ))}
       </View>
-      {data.slots
-        .filter((slot) => dayKey(new Date(slot.starts_at)) === date)
-        .map((slot) => (
-          <View
-            key={slot.id}
-            style={[
-              s.row,
-              {
-                justifyContent: 'space-between',
-                paddingVertical: 13,
-                flexWrap: 'wrap',
-                borderTopWidth: 1,
-                borderColor: c.line,
-              },
-            ]}
-          >
-            <T bold style={{ fontSize: 12 }}>
-              {time(slot.starts_at)} – {time(slot.ends_at)}
-            </T>
-            <T muted style={{ fontSize: 11 }}>
-              {slot.reserved} / {slot.capacity} orders · {slot.is_active ? 'Open' : 'Closed'}
-            </T>
-            <Button small secondary onPress={() => setEdit(slot)}>
-              Edit slot
-            </Button>
-          </View>
-        ))}
-      <Sheet
-        visible={edit !== undefined}
-        title={edit ? 'Edit pickup slot' : 'New pickup slot'}
-        onClose={() => setEdit(undefined)}
-      >
-        {edit !== undefined && (
-          <SlotEditor key={edit?.id ?? 'new'} slot={edit} onClose={() => setEdit(undefined)} />
-        )}
+      {!slots.length && <T>No upcoming pickup times for this date.</T>}
+      {slots.map((slot) => (
+        <View
+          key={slot.id}
+          style={[
+            s.row,
+            {
+              justifyContent: 'space-between',
+              paddingVertical: 13,
+              flexWrap: 'wrap',
+              borderTopWidth: 1,
+              borderColor: c.line,
+            },
+          ]}
+        >
+          <T bold style={{ fontSize: 12 }}>
+            {time(slot.starts_at)} – {time(slot.ends_at)}
+          </T>
+          <T muted style={{ fontSize: 11 }}>
+            {slot.reserved} / {slot.capacity} orders · {slot.is_active ? 'Open' : 'Closed'}
+          </T>
+          <Button small secondary onPress={() => setEdit(slot)}>
+            Edit slot
+          </Button>
+        </View>
+      ))}
+      <Sheet visible={!!edit} title="Edit pickup slot" onClose={() => setEdit(null)}>
+        {edit && <SlotEditor key={edit.id} slot={edit} onClose={() => setEdit(null)} />}
       </Sheet>
     </View>
   );

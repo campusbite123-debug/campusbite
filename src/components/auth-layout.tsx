@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
@@ -15,10 +15,12 @@ export function AuthLayout({
   children,
   onBack,
   backLabel,
-}: React.PropsWithChildren<{ onBack: () => void; backLabel: string }>) {
+  register = false,
+}: React.PropsWithChildren<{ onBack: () => void; backLabel: string; register?: boolean }>) {
   const { width, isPhone } = useLayout();
   const insets = useSafeAreaInsets();
   const wide = width >= 1000;
+  const shadeId = `auth-food-shade-${useId().replace(/:/g, '')}`;
   const photoTopInset = isPhone ? insets.top : 0;
   return (
     <KeyboardAvoidingView
@@ -58,7 +60,7 @@ export function AuthLayout({
           style={[
             styles.panel,
             {
-              flexDirection: wide ? 'row' : 'column',
+              flexDirection: wide ? (register ? 'row-reverse' : 'row') : 'column',
               flexGrow: isPhone ? 1 : 0,
               maxWidth: isPhone ? undefined : wide ? 1080 : 500,
               borderRadius: isPhone ? 0 : 36,
@@ -66,6 +68,7 @@ export function AuthLayout({
           ]}
         >
           <View
+            nativeID="auth-photo"
             testID="auth-food-hero"
             style={{
               width: wide ? '48%' : '100%',
@@ -92,13 +95,13 @@ export function AuthLayout({
               aria-hidden
             >
               <Defs>
-                <LinearGradient id="auth-food-shade" x1="0" y1="0" x2="0" y2="1">
+                <LinearGradient id={shadeId} x1="0" y1="0" x2="0" y2="1">
                   <Stop offset="0" stopColor="#172015" stopOpacity="0.12" />
                   <Stop offset="0.4" stopColor="#172015" stopOpacity={wide ? 0.2 : 0.08} />
                   <Stop offset="1" stopColor="#172015" stopOpacity={wide ? 0.9 : 0.2} />
                 </LinearGradient>
               </Defs>
-              <Rect width="100" height="100" fill="url(#auth-food-shade)" />
+              <Rect width="100" height="100" fill={`url(#${shadeId})`} />
             </Svg>
             <View
               style={{
@@ -120,7 +123,7 @@ export function AuthLayout({
               </View>
             </View>
             {wide && (
-              <View style={styles.story}>
+              <View style={[styles.story, register && { left: 60, right: 36 }]}>
                 <View style={styles.storyRule} />
                 <T style={styles.storyTitle}>
                   Good food.{'\n'}Better campus{'\n'}days.
@@ -138,7 +141,18 @@ export function AuthLayout({
               height={wide ? '100%' : 48}
               viewBox={wide ? '0 0 44 800' : '0 0 400 48'}
               preserveAspectRatio="none"
-              style={wide ? styles.sideCurve : styles.bottomCurve}
+              style={
+                wide
+                  ? [
+                      styles.sideCurve,
+                      register && {
+                        right: undefined,
+                        left: -1,
+                        transform: [{ scaleX: -1 }],
+                      },
+                    ]
+                  : styles.bottomCurve
+              }
               aria-hidden
             >
               <Path
@@ -152,6 +166,7 @@ export function AuthLayout({
             </Svg>
           </View>
           <View
+            nativeID="auth-form"
             style={{
               width: wide ? '52%' : '100%',
               justifyContent: 'center',

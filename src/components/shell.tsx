@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import type { StyleProp, ViewStyle } from 'react-native';
+import type { ScrollViewProps, StyleProp, ViewStyle } from 'react-native';
 import { router, Slot, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth, useCart, useSnapshot, useToast } from '@/contexts/app';
@@ -10,6 +10,7 @@ import { todayLabel } from '@/utils/domain';
 import { Button, Empty, Icon, IconButton, Loading, Sheet, T, s } from './ui';
 import { MobileNavigation } from './mobile-navigation';
 import { BrandMark } from './brand-mark';
+import { PageScrollView } from './page-scroll-view';
 
 const studentNav = [
   ['Home', 'home-outline', '/home'],
@@ -396,15 +397,18 @@ export function Page({
   children,
   style,
   footer,
+  refreshControl,
 }: React.PropsWithChildren<{
   style?: StyleProp<ViewStyle>;
   footer?: React.ReactNode;
+  refreshControl?: ScrollViewProps['refreshControl'];
 }>) {
   const { pagePadding, hasSidebar } = useLayout();
   return (
     <View style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
-      <ScrollView
+      <PageScrollView
         testID="page-scroll"
+        refreshControl={refreshControl}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         automaticallyAdjustKeyboardInsets
@@ -421,7 +425,7 @@ export function Page({
         ]}
       >
         {children}
-      </ScrollView>
+      </PageScrollView>
       {footer && (
         <View
           style={{

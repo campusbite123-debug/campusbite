@@ -13,7 +13,7 @@ export function MealCard({
   width,
   inBag,
   acceptingOrders,
-  orderable,
+  pickupIssue,
   onView,
   onAdd,
 }: {
@@ -23,7 +23,7 @@ export function MealCard({
   width: number;
   inBag: number;
   acceptingOrders: boolean;
-  orderable: boolean;
+  pickupIssue: string | null;
   onView: () => void;
   onAdd: () => void;
 }) {
@@ -31,17 +31,15 @@ export function MealCard({
   const roomy = width >= 240;
   const soldOut = menu.quantity <= 0;
   const atLimit = inBag >= Math.min(menu.quantity, 99);
-  const disabled = soldOut || !acceptingOrders || !orderable || atLimit;
+  const disabled = soldOut || !acceptingOrders || !!pickupIssue || atLimit;
   const status = soldOut
     ? 'Sold out today'
     : !acceptingOrders
       ? 'Pre-orders paused'
-      : !orderable
-        ? 'Pickup unavailable'
-        : `${menu.quantity} left today`;
+      : (pickupIssue ?? `${menu.quantity} left today`);
   const statusColor = soldOut
     ? c.red
-    : !acceptingOrders || !orderable
+    : !acceptingOrders || pickupIssue
       ? '#7C8077'
       : menu.quantity <= menu.low_stock_threshold
         ? c.orangeDark
@@ -50,8 +48,8 @@ export function MealCard({
     ? 'Sold out'
     : !acceptingOrders
       ? 'Paused'
-      : !orderable
-        ? 'Closed'
+      : pickupIssue
+        ? 'No slots'
         : atLimit
           ? 'Added'
           : 'Add';
@@ -144,7 +142,7 @@ export function MealCard({
           ]}
         >
           {!disabled && <Icon name="plus" size={16} color={c.white} />}
-          {atLimit && !soldOut && acceptingOrders && orderable && (
+          {atLimit && !soldOut && acceptingOrders && !pickupIssue && (
             <Icon name="check" size={15} color="#72786B" />
           )}
           <T style={[styles.addText, disabled && { color: '#72786B' }]}>{addLabel}</T>

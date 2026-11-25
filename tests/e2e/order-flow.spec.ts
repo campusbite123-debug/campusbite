@@ -77,7 +77,9 @@ test('student pre-order → admin kitchen → verified pickup and revenue', asyn
   await page.getByRole('button', { name: 'Add House Iced Tea to bag', exact: true }).click();
   await page.getByRole('link', { name: /Cart/ }).click();
   await expect(page.getByText('Total to pay at pickup')).toBeVisible();
+  await expect(page.getByText(/^Pickup at 9:10 AM/)).toBeVisible();
   await page.getByRole('button', { name: '9:30 AM', exact: true }).click();
+  await expect(page.getByText(/^Pickup at 9:30 AM/)).toBeVisible();
   await page.getByRole('button', { name: 'Confirm pre-order', exact: true }).click();
   await expect(page.getByText('Your pre-order is in!', { exact: true })).toBeVisible();
   await expect(page.getByText('Added to your bag', { exact: true })).not.toBeVisible();
@@ -168,6 +170,121 @@ test('administrator meal and inventory changes reach the student menu', async ({
   await signIn(page, 'student');
   await expect(page.getByText('5 left today', { exact: true })).toBeVisible();
   await expect(page.getByText('₱80', { exact: true })).toBeVisible();
+});
+
+test('an admin can toggle service dates and add a later date to one menu plan', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.clock.install({ time: new Date(FIXED_TIME) });
+  await signIn(page, 'admin');
+  await page.goto('/admin/menu');
+  await page.getByRole('textbox', { name: 'Search meals or descriptions' }).fill('Adobo');
+  await page.getByRole('button', { name: 'Schedule', exact: true }).click();
+  await page.getByRole('button', { name: /Today/ }).click();
+  await expect(page.getByRole('button', { name: 'Save daily menu' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Nov 14', exact: true }).click();
+  const quantity = page.getByRole('textbox', { name: 'Remaining quantity' });
+  await quantity.fill('17');
+  await page.getByRole('button', { name: 'Nov 16', exact: true }).click();
+  await page.getByRole('button', { name: /Nov 14/ }).click();
+  await expect(quantity).toHaveValue('17');
+  const custom = page.getByRole('textbox', { name: 'Another service date' });
+  await custom.fill('2026-11-31');
+  await page.getByRole('button', { name: 'Add date' }).click();
+  await expect(page.getByText('Enter today or a future date in YYYY-MM-DD format.')).toBeVisible();
+  await custom.fill('2026-12-02');
+  await page.getByRole('button', { name: 'Add date' }).click();
+  await custom.fill('2026-12-02');
+  await page.getByRole('button', { name: 'Add date' }).click();
+  await page.getByRole('button', { name: 'Save for 2 dates', exact: true }).click();
+  await expect(page.getByText('Daily menu updated for 2 dates.', { exact: true })).toBeVisible();
+  const stock = (date: string) =>
+    api.data.menus.find((m) => m.meal_id === 'adobo' && m.service_date === date)?.quantity;
+  expect(stock('2026-11-16')).toBe(17);
+  expect(stock('2026-12-02')).toBe(17);
+  expect(stock('2026-11-13')).toBe(28);
+  expect(stock('2026-11-14')).toBe(28);
+});
+
+test('an older database saves multiple dates and keeps unfinished dates selected after a stock conflict', async ({
+  page,
+}) => {
+  await page.route('**/rest/v1/rpc/schedule_meal_dates', (route) =>
+    route.fulfill({
+      status: 404,
+      json: { code: 'PGRST202', message: 'Could not find the function in the schema cache' },
+    }),
+  );
+  await page.setViewportSize({ width: 425, height: 869 });
+  await page.clock.install({ time: new Date(FIXED_TIME) });
+  await signIn(page, 'admin');
+  await page.goto('/admin/menu');
+  await page.getByRole('textbox', { name: 'Search meals or descriptions' }).fill('Adobo');
+  await page.getByRole('button', { name: 'Schedule', exact: true }).click();
+  const tomorrowButton = page.getByRole('button', { name: /Nov 14/ });
+  await tomorrowButton.click();
+  await page.getByRole('button', { name: /Nov 15/ }).click();
+  await page.getByRole('textbox', { name: 'Remaining quantity' }).fill('17');
+
+  const menu = (date: string) =>
+    api.data.menus.find((m) => m.meal_id === 'adobo' && m.service_date === date)!;
+  menu('2026-11-14').quantity = 27;
+  await page.getByRole('button', { name: 'Save for 3 dates' }).click();
+  await expect(page.getByText(/Saved 1 of 3 dates.*Stock changed/)).toBeVisible();
+  expect(menu('2026-11-13').quantity).toBe(17);
+  expect(menu('2026-11-14').quantity).toBe(27);
+  const saveRemaining = page.getByRole('button', { name: 'Save for 2 dates' });
+  await expect(saveRemaining).toBeVisible();
+  await tomorrowButton.click();
+  await tomorrowButton.click();
+  await saveRemaining.click();
+  await expect(page.getByText('Daily menu updated for 2 dates.')).toBeVisible();
+  expect(menu('2026-11-14').quantity).toBe(17);
+  expect(menu('2026-11-15').quantity).toBe(17);
+});
+
+test('the admin workspace automatically fills a sparse week and students can book the new slots', async ({
+  page,
+}) => {
+  await page.clock.install({ time: new Date(FIXED_TIME) });
+  api.schema.automaticSlots = false;
+  api.data.settings.opens_at = '07:00:00';
+  api.data.settings.closes_at = '20:00:00';
+  const noon = api.data.slots.find(
+    (slot) => Date.parse(slot.starts_at) === Date.parse('2026-11-13T12:00:00+08:00'),
+  )!;
+  noon.capacity = 8;
+  api.data.slots = [noon];
+  await signIn(page, 'admin');
+  await page.goto('/admin/settings');
+  await expect(page.getByText(/Pickup slots are scheduled automatically every day/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add time slot' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Nov 14', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Edit slot', exact: true })).toHaveCount(26);
+  await page.reload();
+  await expect(page.getByText(/Pickup slots are scheduled automatically every day/)).toBeVisible();
+  expect(
+    api.data.slots.filter((slot) => Date.parse(slot.starts_at) === Date.parse(noon.starts_at)),
+  ).toEqual([noon]);
+  expect(noon.capacity).toBe(8);
+  expect(new Set(api.data.slots.map((slot) => slot.starts_at)).size).toBe(api.data.slots.length);
+  await page.getByRole('textbox', { name: 'Opening time (HH:MM)' }).fill('07:10');
+  await page.getByRole('textbox', { name: 'Closing time (HH:MM)' }).fill('19:45');
+  await page.getByRole('button', { name: 'Save canteen settings' }).click();
+  await expect(page.getByText('Canteen settings updated.')).toBeVisible();
+  await page.getByRole('button', { name: 'Nov 14', exact: true }).click();
+  await expect(page.getByText('7:10 AM – 7:30 AM', { exact: true })).toBeVisible();
+  await expect(page.getByText('7:30 PM – 7:45 PM', { exact: true })).toBeVisible();
+  await signOut(page);
+  await signIn(page, 'student');
+  await page
+    .getByRole('button', { name: 'Add Chicken Adobo with Rice to bag', exact: true })
+    .click();
+  await page.getByRole('link', { name: /Cart/ }).click();
+  await page.getByRole('button', { name: 'Confirm pre-order', exact: true }).click();
+  await expect(page.getByText('Your pre-order is in!', { exact: true })).toBeVisible();
+  expect(api.data.orders.at(-1)?.pickup_slot_id).not.toBe(noon.id);
 });
 
 test('an open daily-menu editor cannot overwrite a new student reservation', async ({

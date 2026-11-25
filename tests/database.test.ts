@@ -56,6 +56,8 @@ beforeAll(async () => {
     '202611130003_admin_consistency.sql',
     '202611130004_popular_meals.sql',
     '202611130005_terminal_admin.sql',
+    '202611240001_schedule_meal_dates.sql',
+    '202611250001_automatic_pickup_slots.sql',
   ])
     await db.exec(
       await readFile(
@@ -83,6 +85,8 @@ beforeAll(async () => {
   menu = await scalar<string>(
     "select id from public.daily_menus where meal_id='20000000-0000-4000-8000-000000000001' and service_date=(now() at time zone 'Asia/Manila')::date+1",
   );
+  await asUser(ids.student);
+  await db.query('select * from public.get_pickup_slots()');
   slot = await scalar<string>(
     "select id from public.pickup_slots where (starts_at at time zone 'Asia/Manila')::date=(now() at time zone 'Asia/Manila')::date+1 and (starts_at at time zone 'Asia/Manila')::time='12:00'",
   );
@@ -98,6 +102,87 @@ afterAll(async () => {
   await db.close();
 });
 describe('actual PostgreSQL migrations and RPCs', () => {
+  it('fills daily pickup windows through closing and preserves an edited slot across refreshes', async () => {
+    const tomorrow = "(now() at time zone 'Asia/Manila')::date + 1";
+    const windows = () =>
+      db.query<{
+        id: string;
+        start: string;
+        finish: string;
+        capacity: number;
+        is_active: boolean;
+      }>(`
+      select id, to_char(starts_at at time zone 'Asia/Manila','HH24:MI') as start,
+             to_char(ends_at at time zone 'Asia/Manila','HH24:MI') as finish, capacity, is_active
+      from public.get_pickup_slots() where (starts_at at time zone 'Asia/Manila')::date = ${tomorrow}
+      order by starts_at`);
+    await db.exec('begin');
+    try {
+      await root();
+      await db.exec("update canteen_settings set opens_at='05:00', closes_at='19:00'");
+      await db.exec(
+        `delete from pickup_slots where (starts_at at time zone 'Asia/Manila')::date = ${tomorrow}`,
+      );
+      await asUser(ids.student);
+      const first = (await windows()).rows;
+      expect(first).toHaveLength(28);
+      expect(first[0].start).toBe('05:00');
+      expect(first[27].finish).toBe('19:00');
+      expect(first.slice(1).map((s) => s.start)).toEqual(first.slice(0, -1).map((s) => s.finish));
+      await asUser(ids.admin);
+      await db.query(
+        "update pickup_slots set starts_at=starts_at + interval '5 minutes', capacity=8, is_active=false where id=$1",
+        [first[0].id],
+      );
+      await asUser(ids.student);
+      const edited = (await windows()).rows;
+      expect(edited).toHaveLength(28);
+      expect(edited[0]).toMatchObject({
+        id: first[0].id,
+        start: '05:05',
+        capacity: 8,
+        is_active: false,
+      });
+      await asUser(ids.admin);
+      await db.exec("update canteen_settings set opens_at='04:45', closes_at='18:45'");
+      const changed = (await windows()).rows;
+      expect(changed[0].start).toBe('04:45');
+      expect(changed.at(-1)?.finish).toBe('18:45');
+      expect(changed[1]).toEqual(edited[0]);
+    } finally {
+      await db.exec('rollback');
+    }
+  });
+  it('fills gaps around a pre-existing closed slot on the first student visit', async () => {
+    const tomorrow = "(now() at time zone 'Asia/Manila')::date + 1";
+    await db.exec('begin');
+    try {
+      await root();
+      await db.exec(`
+        update canteen_settings set opens_at='07:10', closes_at='08:20';
+        delete from pickup_slots where (starts_at at time zone 'Asia/Manila')::date = ${tomorrow};
+        insert into pickup_slots(starts_at, ends_at, is_active)
+          select (d + time '07:25') at time zone 'Asia/Manila', (d + time '07:40') at time zone 'Asia/Manila', false
+          from (select ${tomorrow} as d) t;
+      `);
+      await asUser(ids.student);
+      const result = await db.query(`
+        select to_char(starts_at at time zone 'Asia/Manila', 'HH24:MI') as start,
+               to_char(ends_at at time zone 'Asia/Manila', 'HH24:MI') as finish, is_active
+        from get_pickup_slots() where (starts_at at time zone 'Asia/Manila')::date = ${tomorrow}
+        order by starts_at
+      `);
+      expect(result.rows).toEqual([
+        { start: '07:10', finish: '07:25', is_active: true },
+        { start: '07:25', finish: '07:40', is_active: false },
+        { start: '07:40', finish: '08:00', is_active: true },
+        { start: '08:00', finish: '08:20', is_active: true },
+      ]);
+    } finally {
+      await db.exec('rollback');
+    }
+  });
+
   it('denies terminal provisioning to both student and administrator sessions', async () => {
     await expect(
       db.query('select public.terminal_provision_admin($1,$2)', [ids.student, crypto.randomUUID()]),
@@ -294,6 +379,55 @@ describe('actual PostgreSQL migrations and RPCs', () => {
     expect(
       await scalar('select quantity from public.meal_inventory where daily_menu_id=$1', [menu]),
     ).toBe(40);
+  });
+  it('saves selected service dates together and rolls back all dates on a stale count', async () => {
+    const mealId = await scalar<string>('select meal_id from public.daily_menus where id=$1', [
+      menu,
+    ]);
+    const dates = (
+      await db.query<{ date: string }>(
+        "select ((now() at time zone 'Asia/Manila')::date + days)::text as date from unnest(array[14, 17]) as days",
+      )
+    ).rows.map((row) => row.date);
+    const days = dates.map((service_date, i) => ({
+      service_date,
+      expected_quantity: null as number | null,
+      low_stock_threshold: 5 + i,
+    }));
+    const save = (quantity: number, entries = days) =>
+      db.query("select public.schedule_meal_dates($1, $2::jsonb, '08:00', '14:00', $3, true)", [
+        mealId,
+        JSON.stringify(entries),
+        quantity,
+      ]);
+    const inventory = () =>
+      db.query<{ quantity: number; low_stock_threshold: number }>(
+        'select i.quantity, i.low_stock_threshold from public.daily_menus m join public.meal_inventory i on i.daily_menu_id=m.id where meal_id=$1 and service_date=any($2::date[]) order by service_date',
+        [mealId, dates],
+      );
+    await expect(save(12)).rejects.toThrow(/Administrator/);
+    await asUser(ids.admin);
+    await expect(save(12, [])).rejects.toThrow(/at least one/);
+    await save(12);
+    const saved = [
+      { quantity: 12, low_stock_threshold: 5 },
+      { quantity: 12, low_stock_threshold: 6 },
+    ];
+    expect((await inventory()).rows).toEqual(saved);
+    await expect(
+      save(
+        24,
+        days.map((d, i) => ({ ...d, expected_quantity: 12 - i })),
+      ),
+    ).rejects.toThrow(/Stock changed/);
+    expect((await inventory()).rows).toEqual(saved);
+    await expect(
+      save(
+        24,
+        [days[0], days[0]].map((d) => ({ ...d, expected_quantity: 12 })),
+      ),
+    ).rejects.toThrow(/distinct/);
+    expect((await inventory()).rows).toEqual(saved);
   });
   it('protects booked pickup schedules and records administrator activity', async () => {
     await order();

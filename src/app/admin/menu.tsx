@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { Switch } from 'react-native-paper';
+import { z } from 'zod';
 import { AdminHeader, DataPage, useAction } from '@/components/admin';
 import {
   Button,
@@ -16,10 +17,10 @@ import {
 } from '@/components/ui';
 import { useAuth, useToast } from '@/contexts/app';
 import { colors as c } from '@/constants/theme';
-import { saveMeal, scheduleMeal } from '@/services/repository';
+import { saveMeal, scheduleMealDates } from '@/services/repository';
 import { pickMealImage } from '@/services/media';
-import type { Meal, Snapshot } from '@/types';
-import { dayKey, formatDate, futureDay, money } from '@/utils/domain';
+import type { DailyMenu, Meal, Snapshot } from '@/types';
+import { bookablePickup, dayKey, formatDate, futureDay, money } from '@/utils/domain';
 function MealEditor({
   meal,
   data,
@@ -168,86 +169,192 @@ function ScheduleEditor({
 }) {
   const { user } = useAuth();
   const { busy, run } = useAction();
-  const [date, setDate] = useState(dayKey());
-  const existing = data.menus.find((m) => m.meal_id === meal.id && m.service_date === date);
-  const [qty, setQty] = useState(String(existing?.quantity ?? 30));
-  const [expectedQuantity, setExpectedQuantity] = useState(existing?.quantity);
-  const [from, setFrom] = useState(existing?.available_from.slice(0, 5) ?? '07:00');
-  const [until, setUntil] = useState(existing?.available_until.slice(0, 5) ?? '20:00');
-  const [available, setAvailable] = useState(existing?.is_available ?? true);
-  function selectDate(v: string) {
-    setDate(v);
-    const m = data.menus.find((m) => m.meal_id === meal.id && m.service_date === v);
-    setQty(String(m?.quantity ?? 30));
-    setExpectedQuantity(m?.quantity);
-    setFrom(m?.available_from.slice(0, 5) ?? '07:00');
-    setUntil(m?.available_until.slice(0, 5) ?? '20:00');
-    setAvailable(m?.is_available ?? true);
+  const today = dayKey();
+  const menuFor = (date: string) =>
+    data.menus.find((m) => m.meal_id === meal.id && m.service_date === date) ?? null;
+  // Keep the stock observed when each date was selected, even after a live refresh.
+  const [selected, setSelected] = useState<Record<string, DailyMenu | null>>(() => ({
+    [today]: menuFor(today),
+  }));
+  const dates = Object.keys(selected);
+  const week = Array.from({ length: 7 }, (_, i) => futureDay(i));
+  const choices = [...new Set([...week, ...dates])].sort();
+  const [customDate, setCustomDate] = useState('');
+  const [dateError, setDateError] = useState('');
+  const first = selected[dates[0]];
+  const [draft, setDraft] = useState<{
+    qty?: string;
+    from?: string;
+    until?: string;
+    available?: boolean;
+  }>({});
+  const qty = draft.qty ?? String(first?.quantity ?? 30);
+  const from =
+    draft.from ?? first?.available_from.slice(0, 5) ?? data.settings.opens_at.slice(0, 5);
+  const until =
+    draft.until ?? first?.available_until.slice(0, 5) ?? data.settings.closes_at.slice(0, 5);
+  const available = draft.available ?? first?.is_available ?? true;
+  // The pickup RPC returns the upcoming week. Later dates can be planned before their slots are visible.
+  const datesWithoutPickup = [...dates].sort().filter((date) => {
+    if (!available || !week.includes(date)) return false;
+    const service = {
+      service_date: date,
+      available_from: from + ':00',
+      available_until: until + ':00',
+      is_available: true,
+    };
+    return !data.slots.some((slot) =>
+      bookablePickup(service, slot, meal.prep_minutes, data.settings),
+    );
+  });
+  function toggleDate(date: string) {
+    setSelected((previous) => {
+      const next = { ...previous };
+      if (date in next) delete next[date];
+      else next[date] = menuFor(date);
+      return next;
+    });
+  }
+  function addDate() {
+    const date = customDate.trim();
+    if (!z.iso.date().safeParse(date).success || date < today) {
+      setDateError('Enter today or a future date in YYYY-MM-DD format.');
+      return;
+    }
+    if (!(date in selected)) toggleDate(date);
+    setCustomDate('');
+    setDateError('');
   }
   return (
     <>
       <T style={[s.h2, { marginBottom: 18 }]}>{meal.name}</T>
-      <ScrollView horizontal contentContainerStyle={{ gap: 8, paddingBottom: 17 }}>
-        {Array.from({ length: 7 }, (_, i) => (
-          <Pill key={i} selected={date === futureDay(i)} onPress={() => selectDate(futureDay(i))}>
-            {i === 0 ? 'Today' : formatDate(futureDay(i))}
+      <T bold style={{ fontSize: 12, marginBottom: 10 }}>
+        Select one or more service dates
+      </T>
+      <View style={[s.wrap, { marginBottom: 16 }]}>
+        {choices.map((date) => (
+          <Pill
+            key={date}
+            selected={date in selected}
+            icon={date in selected ? 'check' : undefined}
+            onPress={() => toggleDate(date)}
+          >
+            {date === today
+              ? 'Today'
+              : formatDate(
+                  date,
+                  date.slice(0, 4) === today.slice(0, 4) ? undefined : { year: 'numeric' },
+                )}
           </Pill>
         ))}
-      </ScrollView>
-      <Input label="Service date (YYYY-MM-DD)" value={date} onChangeText={selectDate} />
+      </View>
+      <View style={[s.row, { alignItems: 'center' }]}>
+        <View style={{ flex: 1 }}>
+          <Input
+            label="Another service date"
+            placeholder="YYYY-MM-DD"
+            value={customDate}
+            autoCapitalize="none"
+            onChangeText={(value) => {
+              setCustomDate(value);
+              setDateError('');
+            }}
+            onSubmitEditing={addDate}
+            error={dateError}
+          />
+        </View>
+        <Button secondary small disabled={!customDate.trim() || busy} onPress={addDate}>
+          Add date
+        </Button>
+      </View>
       <View style={s.row}>
         <View style={{ flex: 1 }}>
-          <Input label="Available from (24-hour HH:MM)" value={from} onChangeText={setFrom} />
+          <Input
+            label="Available from (24-hour HH:MM)"
+            value={from}
+            onChangeText={(from) => setDraft({ ...draft, from })}
+          />
         </View>
         <View style={{ flex: 1 }}>
-          <Input label="Available until (HH:MM)" value={until} onChangeText={setUntil} />
+          <Input
+            label="Available until (HH:MM)"
+            value={until}
+            onChangeText={(until) => setDraft({ ...draft, until })}
+          />
         </View>
       </View>
       <Input
         label="Remaining quantity"
         keyboardType="number-pad"
         value={qty}
-        onChangeText={setQty}
+        onChangeText={(qty) => setDraft({ ...draft, qty })}
       />
       <T muted style={{ fontSize: 11, lineHeight: 19 }}>
-        This replaces the remaining stock for this date. Existing orders keep their reserved
-        quantities.
+        Each selected date gets these hours and this remaining quantity. Existing orders keep their
+        reserved quantities.
       </T>
+      {datesWithoutPickup.length > 0 && (
+        <T style={{ marginTop: 12 }}>
+          No pickup time is available for this meal on{' '}
+          {datesWithoutPickup.map((date) => formatDate(date)).join(', ')}. You can save this menu.
+          For students to order, the meal hours must include an open slot in Settings → Pickup
+          schedules.
+        </T>
+      )}
       <View style={[s.row, { justifyContent: 'space-between', marginVertical: 18 }]}>
         <T>Available to order</T>
-        <Switch value={available} color={c.orange} onValueChange={setAvailable} />
+        <Switch
+          value={available}
+          color={c.orange}
+          onValueChange={(available) => setDraft({ ...draft, available })}
+        />
       </View>
       <Button
         loading={busy}
+        disabled={!dates.length || !!customDate.trim()}
         onPress={() =>
           void run(
             async () => {
               if (
-                !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
                 !/^([01]\d|2[0-3]):[0-5]\d$/.test(from) ||
-                !/^([01]\d|2[0-3]):[0-5]\d$/.test(until)
+                !/^([01]\d|2[0-3]):[0-5]\d$/.test(until) ||
+                from >= until
               )
-                throw new Error('Use a valid date and 24-hour times.');
-              await scheduleMeal(
+                throw new Error('Use 24-hour times with an end time after the start time.');
+              if (!/^\d+$/.test(qty) || Number(qty) > 10000)
+                throw new Error('Enter a whole remaining quantity from 0 to 10,000.');
+              await scheduleMealDates(
                 {
                   meal_id: meal.id,
-                  service_date: date,
                   available_from: from + ':00',
                   available_until: until + ':00',
                   quantity: Number(qty),
-                  low_stock_threshold: existing?.low_stock_threshold ?? 8,
                   is_available: available,
+                  dates: dates.map((date) => ({
+                    service_date: date,
+                    expected_quantity: selected[date]?.quantity ?? null,
+                    low_stock_threshold: menuFor(date)?.low_stock_threshold ?? 8,
+                  })),
                 },
                 user!,
-                expectedQuantity,
+                (savedDates) => {
+                  setDraft({ qty, from, until, available });
+                  setSelected((previous) => {
+                    const remaining = { ...previous };
+                    for (const date of savedDates) delete remaining[date];
+                    return remaining;
+                  });
+                },
               );
             },
-            'Daily menu updated.',
+            dates.length === 1
+              ? 'Daily menu updated.'
+              : `Daily menu updated for ${dates.length} dates.`,
             onClose,
           )
         }
       >
-        Save daily menu
+        {dates.length > 1 ? `Save for ${dates.length} dates` : 'Save daily menu'}
       </Button>
     </>
   );

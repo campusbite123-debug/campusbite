@@ -28,7 +28,9 @@ The workspace `.npmrc` puts npm's cache on the project drive because the system 
    - `supabase/migrations/202611130003_admin_consistency.sql`
    - `supabase/migrations/202611130004_popular_meals.sql`
    - `supabase/migrations/202611130005_terminal_admin.sql`
-2. Run `supabase/seed.sql` for editable sample meals, categories, inventory and seven days of pickup slots. It creates **no accounts**. Rerunning adds missing dates without resetting stock or orders.
+   - `supabase/migrations/202611240001_schedule_meal_dates.sql` enables saving several service dates together.
+   - `supabase/migrations/202611250001_automatic_pickup_slots.sql` enables daily pickup windows. The schedule fills automatically when a student or administrator opens the app, using the operating hours in Settings (Manila time). Staff can change capacity or close individual slots. On databases awaiting this migration, an administrator session automatically fills the next seven service dates for everyone.
+2. Run `supabase/seed.sql` for editable sample meals, categories and seven days of menu inventory. It creates **no accounts**. Rerunning adds missing dates without resetting stock or orders.
 3. Copy `.env.example` to `.env`. Set `EXPO_PUBLIC_SUPABASE_URL` to your project URL and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to its public publishable or legacy anon key.
 4. Enable email/password authentication, email confirmation and SMTP. Publish the web confirmation page and configure the production Site URL and Confirm signup email template as described in [docs/EMAIL_CONFIRMATION.md](./docs/EMAIL_CONFIRMATION.md). Allow the actual password-recovery redirect addresses: your production `/reset-password` URL, `http://localhost:8081/**`, `campuscanteen://**`, and your Expo Go LAN address such as `exp://YOUR_LAN_IP:8081/--/**`. Password recovery uses PKCE, so open its email on the originating device/browser.
 5. Check the `meal-images` public bucket, 5 MB/MIME restrictions and Realtime publication created by migration 002. Restart Expo after environment changes.

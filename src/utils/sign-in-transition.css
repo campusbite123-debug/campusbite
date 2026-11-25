@@ -1,0 +1,120 @@
+@media (prefers-reduced-motion: no-preference) {
+  html[data-sign-in-transition='welcome'] #welcome-photo,
+  html[data-sign-in-transition='login'] #auth-photo,
+  html[data-sign-in-transition='register'] #auth-photo {
+    view-transition-name: campusbite-photo;
+  }
+  html[data-sign-in-transition='welcome'] #welcome-foreground {
+    view-transition-name: campusbite-welcome-copy;
+  }
+  html[data-sign-in-transition='login'] #auth-form,
+  html[data-sign-in-transition='register'] #auth-form {
+    view-transition-name: campusbite-sign-in;
+  }
+  html[data-sign-in-transition]::view-transition-group(*) {
+    animation-duration: 480ms;
+    animation-timing-function: cubic-bezier(0.22, 0.8, 0.22, 1);
+  }
+  ::view-transition-image-pair(campusbite-photo) {
+    overflow: clip;
+    isolation: isolate;
+  }
+  ::view-transition-old(campusbite-photo),
+  ::view-transition-new(campusbite-photo) {
+    height: 100%;
+    object-fit: cover;
+  }
+  ::view-transition-old(campusbite-welcome-copy) {
+    animation: welcome-copy-out 145ms ease-out both;
+  }
+  ::view-transition-new(campusbite-sign-in) {
+    animation: sign-in-arrive 330ms 100ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  html[data-sign-in-direction='back']::view-transition-old(campusbite-sign-in) {
+    animation: welcome-copy-out 145ms ease-out both;
+  }
+  html[data-sign-in-direction='back']::view-transition-new(campusbite-welcome-copy) {
+    animation: sign-in-arrive 330ms 100ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  html[data-sign-in-direction='register']::view-transition-old(campusbite-sign-in),
+  html[data-sign-in-direction='login']::view-transition-old(campusbite-sign-in) {
+    animation: auth-form-out 150ms ease-out both;
+  }
+  html[data-sign-in-direction='register']::view-transition-new(campusbite-sign-in),
+  html[data-sign-in-direction='login']::view-transition-new(campusbite-sign-in) {
+    animation: auth-form-in 240ms 130ms ease-out both;
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (min-width: 1000px) {
+  ::view-transition-image-pair(campusbite-photo) {
+    animation: sign-in-photo-corners 480ms cubic-bezier(0.22, 0.8, 0.22, 1) both;
+  }
+  html[data-sign-in-direction='back']::view-transition-image-pair(campusbite-photo) {
+    animation-direction: reverse;
+  }
+  html[data-sign-in-direction='register']::view-transition-image-pair(campusbite-photo) {
+    animation-name: auth-photo-swap-corners;
+  }
+  html[data-sign-in-direction='login']::view-transition-image-pair(campusbite-photo) {
+    animation-name: auth-photo-swap-corners;
+    animation-direction: reverse;
+  }
+  html[data-sign-in-direction='forward'][data-sign-in-transition='register']::view-transition-image-pair(
+      campusbite-photo
+    ) {
+    animation-name: register-photo-corners;
+  }
+}
+@keyframes auth-form-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes auth-form-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes auth-photo-swap-corners {
+  from {
+    border-radius: 36px 0 0 36px;
+  }
+  to {
+    border-radius: 0 36px 36px 0;
+  }
+}
+@keyframes register-photo-corners {
+  from {
+    border-radius: 0;
+  }
+  to {
+    border-radius: 0 36px 36px 0;
+  }
+}
+@keyframes sign-in-photo-corners {
+  from {
+    border-radius: 0;
+  }
+  to {
+    border-radius: 36px 0 0 36px;
+  }
+}
+@keyframes welcome-copy-out {
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+@keyframes sign-in-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

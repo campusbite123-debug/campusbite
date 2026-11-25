@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadSnapshot } from '@/services/repository';
+import { loadSnapshot, scheduleMealDates } from '@/services/repository';
 import { collectedRevenue } from '@/utils/domain';
-import { DEMO_CUSTOMER } from './fixtures/demo-engine';
+import { DEMO_ADMIN, DEMO_CUSTOMER } from './fixtures/demo-engine';
 
 const api = vi.hoisted(() => ({ from: vi.fn(), rpc: vi.fn() }));
 vi.mock('@/services/supabase', () => ({ supabase: api }));
@@ -12,6 +12,8 @@ beforeEach(() => {
   api.from.mockImplementation((table: string) => {
     const query = {
       select: () => query,
+      gt: () => query,
+      limit: async () => ({ data: [{ schedule_start: null }], error: null }),
       order: () => query,
       range: async () => ({ data: table === 'orders' ? orders : [], error: null }),
       single: async () => ({ data: {}, error: null }),
@@ -57,4 +59,47 @@ describe('Supabase order responses', () => {
     });
     expect(collectedRevenue(snapshot.orders)).toBe(7500);
   });
+});
+
+describe('menu schedule saves', () => {
+  const plan = {
+    meal_id: 'meal-1',
+    available_from: '07:00:00',
+    available_until: '20:00:00',
+    quantity: 30,
+    is_available: true,
+    dates: [
+      { service_date: '2026-11-25', expected_quantity: 22, low_stock_threshold: 5 },
+      { service_date: '2026-11-26', expected_quantity: null, low_stock_threshold: 8 },
+    ],
+  };
+
+  it('uses each date’s original stock and threshold when the batch function is missing', async () => {
+    api.rpc.mockClear().mockResolvedValueOnce({ error: { code: 'PGRST202' } });
+    await scheduleMealDates(plan, DEMO_ADMIN);
+    expect(api.rpc.mock.calls.slice(1)).toEqual(
+      plan.dates.map((day) => [
+        'schedule_meal',
+        {
+          p_meal_id: plan.meal_id,
+          p_available_from: plan.available_from,
+          p_available_until: plan.available_until,
+          p_quantity: 30,
+          p_available: true,
+          p_service_date: day.service_date,
+          p_expected_quantity: day.expected_quantity,
+          p_threshold: day.low_stock_threshold,
+        },
+      ]),
+    );
+  });
+
+  it.each(['P0001', '42501', ''])(
+    'never replays a failed batch for error code %j',
+    async (code) => {
+      api.rpc.mockClear().mockResolvedValueOnce({ error: { code, message: 'Save failed' } });
+      await expect(scheduleMealDates(plan, DEMO_ADMIN)).rejects.toThrow('Save failed');
+      expect(api.rpc).toHaveBeenCalledTimes(1);
+    },
+  );
 });

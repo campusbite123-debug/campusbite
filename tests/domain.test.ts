@@ -5,6 +5,7 @@ import {
   cartTotal,
   collectedRevenue,
   csv,
+  missingPickupSlots,
   registrationSchema,
   validSlots,
 } from '@/utils/domain';
@@ -24,6 +25,28 @@ beforeEach(() => {
   };
 });
 afterEach(() => vi.useRealTimers());
+describe('automatic pickup windows', () => {
+  it('fills seven Manila dates around existing slots and stops exactly at closing', () => {
+    const settings = { opens_at: '07:10:00', closes_at: '08:20:00' };
+    const existing = [
+      { starts_at: '2026-11-14T07:20:00+08:00', ends_at: '2026-11-14T07:40:00+08:00' },
+    ];
+    const now = Date.parse('2026-11-13T07:45:00+08:00');
+    const missing = missingPickupSlots(settings, existing, now);
+    const local = (value: string) => new Date(value + '+08:00').toISOString();
+    expect(missing.slice(0, 4)).toEqual(
+      [
+        ['2026-11-13T08:00', '2026-11-13T08:20'],
+        ['2026-11-14T07:10', '2026-11-14T07:20'],
+        ['2026-11-14T07:40', '2026-11-14T08:00'],
+        ['2026-11-14T08:00', '2026-11-14T08:20'],
+      ].map(([start, end]) => ({ starts_at: local(start), ends_at: local(end) })),
+    );
+    expect(missing.at(-1)?.ends_at).toBe(local('2026-11-19T08:20'));
+    expect(missingPickupSlots(settings, [...existing, ...missing], now)).toEqual([]);
+  });
+});
+
 describe('registration and cart', () => {
   it('registers without a student ID and requires a name, email and matching passwords', () => {
     const valid = {
@@ -62,6 +85,16 @@ describe('registration and cart', () => {
   });
 });
 describe('order transactions', () => {
+  it('keeps the last pickup window available while the whole bag can be ready by closing', () => {
+    const at = (time: string) => Date.parse(`2026-11-13T${time}:00+08:00`);
+    const last = validSlots(data, checkout.items, at('18:45'));
+    expect(last).toHaveLength(1);
+    expect(Date.parse(last[0].pickup_at)).toBe(at('18:55'));
+    expect(validSlots(data, checkout.items, at('18:51'))).toHaveLength(0);
+    expect(validSlots(data, checkout.items, at('19:00'))).toHaveLength(0);
+    const beforeOpening = validSlots(data, checkout.items, at('04:00'));
+    expect(Date.parse(beforeOpening[0].pickup_at)).toBe(at('05:00'));
+  });
   it('deducts stock, reserves a slot and calculates current prices', () => {
     const before = data.menus[0].quantity;
     data.meals[0].price = 8000;

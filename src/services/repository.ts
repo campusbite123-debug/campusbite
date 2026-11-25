@@ -12,7 +12,7 @@ import type {
   Status,
 } from '@/types';
 import { supabase } from './supabase';
-import { dayKey, mealSchema } from '@/utils/domain';
+import { dayKey, errorMessage, mealSchema, missingPickupSlots, timeInHours } from '@/utils/domain';
 
 type OrderRow = Omit<Order, 'items' | 'history' | 'payment_collected' | 'collected_at'> & {
   order_items: Order['items'];
@@ -51,6 +51,82 @@ async function allRows(table: string, select = '*', key = 'id'): Promise<any[]> 
     if (batch.length < 500) return rows;
   }
 }
+async function scheduledSlots(user: SessionUser, settings: Settings, slots: Slot[]) {
+  const now = Date.now();
+  const nowIso = new Date(now).toISOString();
+  // The automatic scheduler adds schedule_start to stored rows. Read a sample
+  // after the RPC has run so a freshly migrated database has generated its rows.
+  const sample = checked(
+    await db().from('pickup_slots').select('*').gt('ends_at', nowIso).order('starts_at').limit(1),
+  )?.[0];
+  if (sample && 'schedule_start' in sample) return slots;
+
+  if (user.role === 'ADMIN') {
+    // Legacy checkout requires the stored times to fit the current hours. Trim
+    // unbooked edge slots after an hours change, keeping their capacity and ID.
+    for (const slot of slots) {
+      if (slot.reserved || timeInHours(slot, settings.opens_at, settings.closes_at)) continue;
+      const day = dayKey(new Date(slot.starts_at));
+      const start = Math.max(
+        Date.parse(slot.starts_at),
+        Date.parse(`${day}T${settings.opens_at}+08:00`),
+      );
+      const end = Math.min(
+        Date.parse(slot.ends_at),
+        Date.parse(`${day}T${settings.closes_at}+08:00`),
+      );
+      if (start >= end || start <= now) continue;
+      if (slots.some((other) => other.id !== slot.id && Date.parse(other.starts_at) === start))
+        continue;
+      const times = {
+        starts_at: new Date(start).toISOString(),
+        ends_at: new Date(end).toISOString(),
+      };
+      const change = await db()
+        .from('pickup_slots')
+        .update(times)
+        .eq('id', slot.id)
+        .eq('starts_at', slot.starts_at)
+        .eq('ends_at', slot.ends_at)
+        .select('id')
+        .maybeSingle();
+      // Another slot can already own the new start, or an order can reserve
+      // this slot after the read. In either case the database row takes priority.
+      if (
+        change.error?.code === '23505' ||
+        change.error?.message.startsWith('Booked pickup times cannot be changed')
+      )
+        continue;
+      if (checked(change)) Object.assign(slot, times);
+    }
+    // The legacy RPC omits slots already in progress, even if they extend into
+    // the next half-hour. Include those rows when checking for overlaps.
+    const ongoing =
+      sample && Date.parse(sample.starts_at) <= now
+        ? checked(
+            await db()
+              .from('pickup_slots')
+              .select('starts_at,ends_at')
+              .lte('starts_at', nowIso)
+              .gt('ends_at', nowIso),
+          )
+        : [];
+    const missing = missingPickupSlots(settings, [...slots, ...(ongoing ?? [])], now);
+    if (missing.length) {
+      checked(
+        await db().from('pickup_slots').upsert(missing, {
+          onConflict: 'starts_at',
+          ignoreDuplicates: true,
+        }),
+      );
+      slots = checked(await db().rpc('get_pickup_slots')) as Slot[];
+    }
+  }
+  return slots
+    .filter((slot) => timeInHours(slot, settings.opens_at, settings.closes_at))
+    .map((slot) => ({ ...slot, pickup_at_start: true }));
+}
+
 export async function loadSnapshot(user: SessionUser): Promise<Snapshot> {
   signedIn(user);
   const [categories, meals, menus, inventory, slots, orders, profiles, settings, popularity] =
@@ -73,7 +149,7 @@ export async function loadSnapshot(user: SessionUser): Promise<Snapshot> {
       ...m,
       ...inventory.find((i) => i.daily_menu_id === m.id),
     })) as DailyMenu[],
-    slots: slots as Slot[],
+    slots: await scheduledSlots(user, settings as Settings, slots as Slot[]),
     profiles: profiles as Profile[],
     settings: settings as Settings,
     orders: orders.map((o: OrderRow) => ({
@@ -139,24 +215,57 @@ export async function saveMeal(input: MealInput, user: SessionUser) {
     : db().from('meals').insert(clean);
   return checked(await request.select('id').single())!.id as string;
 }
-export async function scheduleMeal(
-  input: ScheduleInput,
+export async function scheduleMealDates(
+  input: Pick<
+    ScheduleInput,
+    'meal_id' | 'available_from' | 'available_until' | 'quantity' | 'is_available'
+  > & {
+    dates: {
+      service_date: string;
+      expected_quantity: number | null;
+      low_stock_threshold: number;
+    }[];
+  },
   user: SessionUser,
-  expectedQuantity?: number,
+  onPartialSave?: (savedDates: string[]) => void,
 ) {
   administrator(user);
-  return checked(
-    await db().rpc('schedule_meal', {
-      p_meal_id: input.meal_id,
-      p_service_date: input.service_date,
-      p_available_from: input.available_from,
-      p_available_until: input.available_until,
-      p_quantity: input.quantity,
-      p_threshold: input.low_stock_threshold,
-      p_available: input.is_available,
-      p_expected_quantity: expectedQuantity ?? null,
-    }),
-  );
+  const common = {
+    p_meal_id: input.meal_id,
+    p_available_from: input.available_from,
+    p_available_until: input.available_until,
+    p_quantity: input.quantity,
+    p_available: input.is_available,
+  };
+  if (!input.dates.length) throw new Error('Select at least one service date.');
+  if (input.dates.length > 1) {
+    const batch = await db().rpc('schedule_meal_dates', { ...common, p_dates: input.dates });
+    // A missing RPC is rejected before execution. Other failures must never replay the batch.
+    if (batch.error?.code !== 'PGRST202') {
+      checked(batch);
+      return;
+    }
+  }
+  const savedDates: string[] = [];
+  for (const day of input.dates) {
+    try {
+      checked(
+        await db().rpc('schedule_meal', {
+          ...common,
+          p_service_date: day.service_date,
+          p_expected_quantity: day.expected_quantity,
+          p_threshold: day.low_stock_threshold,
+        }),
+      );
+    } catch (error) {
+      if (!savedDates.length) throw error;
+      onPartialSave?.(savedDates);
+      throw new Error(
+        `Saved ${savedDates.length} of ${input.dates.length} dates. Check ${day.service_date}. ${errorMessage(error)}`,
+      );
+    }
+    savedDates.push(day.service_date);
+  }
 }
 export async function setStock(
   id: string,
@@ -179,27 +288,12 @@ export async function saveSettings(value: Settings, user: SessionUser) {
   administrator(user);
   return checked(await db().from('canteen_settings').update(value).eq('id', true));
 }
-export async function saveSlot(
-  input: Omit<Slot, 'id' | 'reserved'> & { id?: string },
-  user: SessionUser,
-) {
+export async function saveSlot(slot: Slot, capacity: number, active: boolean, user: SessionUser) {
   administrator(user);
-  if (
-    !Number.isFinite(new Date(input.starts_at).getTime()) ||
-    !Number.isFinite(new Date(input.ends_at).getTime()) ||
-    new Date(input.starts_at).getTime() <= Date.now() ||
-    new Date(input.ends_at) <= new Date(input.starts_at) ||
-    !Number.isInteger(input.capacity) ||
-    input.capacity < 1 ||
-    input.capacity > 500 ||
-    dayKey(new Date(input.starts_at)) !== dayKey(new Date(input.ends_at))
-  )
-    throw new Error('Check the future date, times and capacity (1–500).');
-  const { id, ...values } = input;
+  if (!Number.isInteger(capacity) || capacity < 1 || capacity > 500)
+    throw new Error('Enter a whole capacity from 1 to 500.');
   return checked(
-    await (id
-      ? db().from('pickup_slots').update(values).eq('id', id)
-      : db().from('pickup_slots').insert(values)),
+    await db().from('pickup_slots').update({ capacity, is_active: active }).eq('id', slot.id),
   );
 }
 export async function suspendStudent(

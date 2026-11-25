@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router, useIsFocused } from 'expo-router';
@@ -9,43 +9,50 @@ import { colors as c, fonts } from '@/constants/theme';
 import { useLayout } from '@/hooks/use-layout';
 import { T } from './ui';
 import { BrandMark } from './brand-mark';
+import { openWithSignInTransition, signInLayoutReady } from '@/utils/sign-in-transition';
 
 export function WelcomeScreen() {
   const { width, height, isPhone } = useLayout();
   const focused = useIsFocused();
+  useLayoutEffect(() => {
+    if (focused) signInLayoutReady();
+  }, [focused]);
   const insets = useSafeAreaInsets();
   const compact = width < 380;
   return (
     <View testID="welcome-screen" style={styles.screen}>
       {focused && <StatusBar style="light" />}
-      <Image
-        testID="welcome-food-image"
-        source={require('../../assets/auth/food-background.jpg')}
-        contentFit="cover"
-        contentPosition={{ left: isPhone ? '28%' : '50%', top: '50%' }}
-        style={StyleSheet.absoluteFill}
-        accessible={false}
-      />
-      <Svg
-        width="100%"
-        height="100%"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-        style={StyleSheet.absoluteFill}
-        aria-hidden
-        pointerEvents="none"
-      >
-        <Defs>
-          <LinearGradient id="welcome-photo-shade" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor="#171D13" stopOpacity="0.32" />
-            <Stop offset="0.35" stopColor="#171D13" stopOpacity="0.4" />
-            <Stop offset="0.7" stopColor="#171D13" stopOpacity="0.62" />
-            <Stop offset="1" stopColor="#171D13" stopOpacity="0.88" />
-          </LinearGradient>
-        </Defs>
-        <Rect width="100" height="100" fill="url(#welcome-photo-shade)" />
-      </Svg>
+      <View nativeID="welcome-photo" pointerEvents="none" style={StyleSheet.absoluteFill}>
+        <Image
+          testID="welcome-food-image"
+          source={require('../../assets/auth/food-background.jpg')}
+          contentFit="cover"
+          contentPosition={{ left: isPhone ? '28%' : '50%', top: '50%' }}
+          style={StyleSheet.absoluteFill}
+          accessible={false}
+        />
+        <Svg
+          width="100%"
+          height="100%"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          style={StyleSheet.absoluteFill}
+          aria-hidden
+          pointerEvents="none"
+        >
+          <Defs>
+            <LinearGradient id="welcome-photo-shade" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor="#171D13" stopOpacity="0.32" />
+              <Stop offset="0.35" stopColor="#171D13" stopOpacity="0.4" />
+              <Stop offset="0.7" stopColor="#171D13" stopOpacity="0.62" />
+              <Stop offset="1" stopColor="#171D13" stopOpacity="0.88" />
+            </LinearGradient>
+          </Defs>
+          <Rect width="100" height="100" fill="url(#welcome-photo-shade)" />
+        </Svg>
+      </View>
       <ScrollView
+        nativeID="welcome-foreground"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           flexGrow: 1,
@@ -91,7 +98,7 @@ export function WelcomeScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Sign in"
-              onPress={() => router.push('/login')}
+              onPress={() => openWithSignInTransition(() => router.push('/login'))}
               style={({ pressed }) => [
                 styles.signIn,
                 { backgroundColor: pressed ? '#FFF8EB5C' : '#FFF8EB33' },
@@ -102,7 +109,7 @@ export function WelcomeScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Create an account"
-              onPress={() => router.push('/register')}
+              onPress={() => openWithSignInTransition(() => router.push('/register'), 'register')}
               style={({ pressed }) => [styles.register, { opacity: pressed ? 0.65 : 1 }]}
             >
               <T style={styles.registerText}>Create an account</T>

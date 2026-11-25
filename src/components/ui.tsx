@@ -207,7 +207,7 @@ export function Input({
           style,
         ]}
       />
-      {error && <T style={{ color: c.red, fontSize: 12 }}>{error}</T>}
+      {!!error && <T style={{ color: c.red, fontSize: 12 }}>{error}</T>}
     </View>
   );
 }

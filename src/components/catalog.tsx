@@ -1,7 +1,7 @@
 import React, { useDeferredValue, useMemo, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
-import { useAuth, useCart, useSnapshot } from '@/contexts/app';
+import { useAuth, useCart, useSnapshot, useToast } from '@/contexts/app';
 import { colors as c, fonts } from '@/constants/theme';
 import {
   cartTotal,
@@ -12,6 +12,7 @@ import {
   isActive,
   mealFor,
   money,
+  upcomingSlotsOnDay,
   validSlots,
 } from '@/utils/domain';
 import type { DailyMenu, Snapshot } from '@/types';
@@ -141,7 +142,9 @@ export function BagPanel({ data, compact = false }: { data: Snapshot; compact?: 
 export function Catalog({ home = false }: { home?: boolean }) {
   const { isPhone, contentWidth, fontScale } = useLayout();
   const { user } = useAuth();
-  const { data, isLoading, error, refetch, dataUpdatedAt } = useSnapshot();
+  const { data, isLoading, error, refetch, dataUpdatedAt, fetchStatus } = useSnapshot();
+  const toast = useToast();
+  const [refreshing, setRefreshing] = useState(false);
   const { add, lines } = useCart();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
@@ -200,8 +203,18 @@ export function Catalog({ home = false }: { home?: boolean }) {
       });
   }, [data, mealIndex, popularity, deferredSearch, category, date, sort]);
   if (isLoading) return <Loading inShell hero={home} label="Loading the menu" />;
-  if (error || !data)
+  if (!data || (!home && error))
     return <ErrorState message={errorMessage(error)} retry={() => void refetch()} />;
+  async function refreshHome() {
+    setRefreshing(true);
+    try {
+      await refetch({ cancelRefetch: false, throwOnError: true });
+    } catch {
+      toast('Couldn’t refresh Home. Pull down to try again.', { tone: 'error' });
+    } finally {
+      setRefreshing(false);
+    }
+  }
   const withRail = home && contentWidth >= 1000;
   const gridWidth = measuredGridWidth || contentWidth - (withRail ? 313 : 0);
   const gridGap = isPhone ? 12 : 16;
@@ -218,6 +231,15 @@ export function Catalog({ home = false }: { home?: boolean }) {
   const active = data.orders
     .filter(isActive)
     .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+  const daySlots = upcomingSlotsOnDay(data.slots, date, dataUpdatedAt);
+  const openSlots = daySlots.filter((slot) => slot.is_active);
+  const pickupIssue = !daySlots.length
+    ? 'No upcoming pickup times'
+    : !openSlots.length
+      ? 'Pickup slots closed'
+      : openSlots.every((slot) => slot.reserved >= slot.capacity)
+        ? 'Pickup slots full'
+        : 'Pickup unavailable';
   const selectedMeal = selected ? mealFor(selected, data) : null;
   const currentMenu = selected ? data.menus.find((m) => m.id === selected.id) : null;
   const remaining = Math.max(
@@ -226,7 +248,18 @@ export function Catalog({ home = false }: { home?: boolean }) {
       (lines.find((l) => l.daily_menu_id === selected?.id)?.quantity ?? 0),
   );
   return (
-    <Page>
+    <Page
+      refreshControl={
+        home ? (
+          <RefreshControl
+            refreshing={refreshing && fetchStatus !== 'paused'}
+            onRefresh={refreshHome}
+            colors={[c.orangeDark]}
+            tintColor={c.orangeDark}
+          />
+        ) : undefined
+      }
+    >
       <View
         style={{
           flexDirection: withRail ? 'row' : 'column',
@@ -398,7 +431,7 @@ export function Catalog({ home = false }: { home?: boolean }) {
                     }
                     inBag={lines.find((line) => line.daily_menu_id === menu.id)?.quantity ?? 0}
                     acceptingOrders={data.settings.accepting_orders}
-                    orderable={availableMenus.has(menu.id)}
+                    pickupIssue={availableMenus.has(menu.id) ? null : pickupIssue}
                     onView={() => {
                       setSelected(menu);
                       setQuantity(1);

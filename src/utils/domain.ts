@@ -9,13 +9,14 @@ export const money = (centavos: number) =>
     maximumFractionDigits: 2,
     minimumFractionDigits: 0,
   }).format(centavos / 100);
+const serviceDayFormat = new Intl.DateTimeFormat('en-CA', {
+  timeZone: TIMEZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
 export function dayKey(date: Date = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: TIMEZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(date);
+  return serviceDayFormat.format(date);
 }
 export function futureDay(offset: number) {
   const date = new Date(`${dayKey()}T12:00:00+08:00`);
@@ -70,7 +71,67 @@ export function mealFor(menu: DailyMenu, data: Snapshot): Meal {
   if (!meal) throw new Error('This meal is no longer on the menu.');
   return meal;
 }
-export function slotFits(menu: DailyMenu, slot: Slot, prep: number, now = Date.now()) {
+export function upcomingSlotsOnDay(slots: Slot[], date: string, now = Date.now()) {
+  const midnight = Date.parse(`${date}T00:00:00+08:00`);
+  return slots.filter((slot) => {
+    const start = Date.parse(slot.starts_at);
+    return (
+      Date.parse(slot.ends_at) > now && start >= midnight && start < midnight + 24 * 60 * 60 * 1000
+    );
+  });
+}
+
+// Older databases accept only future, stored pickup times. Fill the next seven
+// service dates around existing slots, including closed slots and reservations.
+export function missingPickupSlots(
+  settings: Pick<Snapshot['settings'], 'opens_at' | 'closes_at'>,
+  existing: Pick<Slot, 'starts_at' | 'ends_at'>[],
+  now: number,
+) {
+  const today = dayKey(new Date(now));
+  const firstOpen = Date.parse(`${today}T${settings.opens_at}+08:00`);
+  const firstClose = Date.parse(`${today}T${settings.closes_at}+08:00`);
+  const occupied = existing
+    .map((slot) => ({
+      start: Date.parse(slot.starts_at),
+      end: Date.parse(slot.ends_at),
+    }))
+    .sort((a, b) => a.start - b.start);
+  const halfHour = 30 * 60_000;
+  const missing: { starts_at: string; ends_at: string }[] = [];
+  for (let day = 0; day < 7; day++) {
+    const offset = day * 86_400_000;
+    const close = firstClose + offset;
+    let start = firstOpen + offset;
+    while (start < close) {
+      const covering = occupied.find((slot) => slot.start <= start && start < slot.end);
+      if (covering) {
+        start = covering.end;
+        continue;
+      }
+      const next = occupied.find((slot) => slot.start > start);
+      const end = Math.min(
+        (Math.floor(start / halfHour) + 1) * halfHour,
+        close,
+        next?.start ?? close,
+      );
+      if (start > now)
+        missing.push({
+          starts_at: new Date(start).toISOString(),
+          ends_at: new Date(end).toISOString(),
+        });
+      start = end;
+    }
+  }
+  return missing;
+}
+export function bookablePickup(
+  menu: Pick<DailyMenu, 'service_date' | 'available_from' | 'available_until' | 'is_available'>,
+  slot: Slot,
+  prep: number,
+  settings: Snapshot['settings'],
+  now = Date.now(),
+) {
   const start = new Date(`${menu.service_date}T${menu.available_from}+08:00`).getTime();
   const end = new Date(`${menu.service_date}T${menu.available_until}+08:00`).getTime();
   const pickup = new Date(slot.starts_at).getTime();
@@ -80,29 +141,36 @@ export function slotFits(menu: DailyMenu, slot: Slot, prep: number, now = Date.n
     slot.reserved < slot.capacity &&
     pickup >= start &&
     new Date(slot.ends_at).getTime() <= end &&
-    pickup >= now + prep * 60000
+    now + prep * 60000 <= (slot.pickup_at_start ? pickup : Date.parse(slot.ends_at)) &&
+    timeInHours(slot, settings.opens_at, settings.closes_at)
   );
 }
 export function validSlots(data: Snapshot, cart: CartLine[], now = Date.now()) {
-  return data.slots.filter(
-    (slot) =>
-      data.settings.accepting_orders &&
-      cart.length > 0 &&
-      cart.every((line) => {
-        const menu = data.menus.find((m) => m.id === line.daily_menu_id);
-        const meal = data.meals.find((m) => m.id === menu?.meal_id);
-        return (
-          !!menu &&
-          !!meal &&
-          meal.is_active &&
-          line.quantity <= menu.quantity &&
-          slotFits(menu, slot, meal.prep_minutes, now) &&
-          timeInHours(slot, data.settings.opens_at, data.settings.closes_at)
-        );
-      }),
-  );
+  if (!data.settings.accepting_orders || !cart.length) return [];
+  const services: DailyMenu[] = [];
+  let prep = 0;
+  for (const line of cart) {
+    const menu = data.menus.find((m) => m.id === line.daily_menu_id);
+    const meal = data.meals.find((m) => m.id === menu?.meal_id);
+    if (!menu || !meal?.is_active || line.quantity > menu.quantity) return [];
+    services.push(menu);
+    prep = Math.max(prep, meal.prep_minutes);
+  }
+  const readyAt = now + prep * 60000;
+  return data.slots
+    .filter((slot) =>
+      services.every((menu) => bookablePickup(menu, slot, prep, data.settings, now)),
+    )
+    .map((slot) => ({
+      ...slot,
+      pickup_at: new Date(Math.max(Date.parse(slot.starts_at), readyAt)).toISOString(),
+    }))
+    .sort(
+      (a, b) =>
+        a.pickup_at.localeCompare(b.pickup_at) || Date.parse(a.starts_at) - Date.parse(b.starts_at),
+    );
 }
-function timeInHours(slot: Slot, open: string, close: string) {
+export function timeInHours(slot: Slot, open: string, close: string) {
   const d = dayKey(new Date(slot.starts_at));
   return (
     new Date(slot.starts_at) >= new Date(`${d}T${open}+08:00`) &&

@@ -19,14 +19,10 @@ insert into public.meals(id,name,description,category_id,price,image_url,prep_mi
  ('20000000-0000-4000-8000-000000000008','Bottled Water','A chilled 500 ml bottle of purified drinking water.','10000000-0000-4000-8000-000000000005',2000,'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=900&q=85',1,false)
 on conflict(id) do nothing;
 insert into public.daily_menus(meal_id,service_date,available_from,available_until)
-select m.id,((now() at time zone 'Asia/Manila')::date+d),'07:00','20:00' from public.meals m cross join generate_series(0,6) d where m.is_active
+select m.id,((now() at time zone 'Asia/Manila')::date+d),s.opens_at,s.closes_at
+from public.meals m cross join public.canteen_settings s cross join generate_series(0,6) d where m.is_active
 on conflict(meal_id,service_date) do nothing;
 insert into public.meal_inventory(daily_menu_id,quantity,low_stock_threshold)
 select id,case when meal_id='20000000-0000-4000-8000-000000000006' then 7 else 30 end,8 from public.daily_menus
 on conflict(daily_menu_id) do nothing;
-insert into public.pickup_slots(starts_at,ends_at,capacity)
-select (((now() at time zone 'Asia/Manila')::date+d)+time '07:00'+n*interval '30 minutes') at time zone 'Asia/Manila',
-       (((now() at time zone 'Asia/Manila')::date+d)+time '07:00'+(n+1)*interval '30 minutes') at time zone 'Asia/Manila',20
-from generate_series(0,6) d cross join generate_series(0,25) n
-on conflict(starts_at) do nothing;
 commit;

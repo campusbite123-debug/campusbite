@@ -21,6 +21,7 @@ const accounts = {
 // are imported by, embedded in, or selectable from the application.
 export async function mockSupabase(context: BrowserContext) {
   const data = createSeed();
+  const schema = { automaticSlots: true };
   const delta =
     Date.parse('2026-11-13T00:00:00+08:00') -
     Date.parse(`${data.menus[0].service_date}T00:00:00+08:00`);
@@ -112,7 +113,12 @@ export async function mockSupabase(context: BrowserContext) {
       try {
         if (url.pathname.startsWith('/rest/v1/rpc/')) {
           const name = url.pathname.split('/').pop();
-          if (name === 'get_pickup_slots') return send(data.slots);
+          if (name === 'get_pickup_slots')
+            return send(
+              schema.automaticSlots
+                ? data.slots
+                : data.slots.filter((slot) => Date.parse(slot.starts_at) >= Date.parse(FIXED_TIME)),
+            );
           if (name === 'list_students') {
             engine.admin(active);
             return send(data.profiles.filter((p) => p.id !== accounts.admin.id));
@@ -157,25 +163,40 @@ export async function mockSupabase(context: BrowserContext) {
             engine.stock(body.p_menu_id, body.p_quantity, body.p_threshold, active);
             return send(null);
           }
-          if (name === 'schedule_meal') {
-            const existing = data.menus.find(
-              (m) => m.meal_id === body.p_meal_id && m.service_date === body.p_service_date,
-            );
-            if (existing && existing.quantity !== body.p_expected_quantity)
-              throw new Error('Stock changed while you were editing. Refresh and try again.');
-            engine.schedule(
-              {
-                meal_id: body.p_meal_id,
-                service_date: body.p_service_date,
-                available_from: body.p_available_from,
-                available_until: body.p_available_until,
-                is_available: body.p_available,
-                quantity: body.p_quantity,
-                low_stock_threshold: body.p_threshold,
-              },
-              active,
-            );
-            return send(existing?.id ?? 'scheduled');
+          if (name === 'schedule_meal_dates' || name === 'schedule_meal') {
+            const pending = { ...data, menus: data.menus.map((menu) => ({ ...menu })) };
+            const planner = new DemoEngine(pending, randomUUID, () => Date.parse(FIXED_TIME));
+            const dates =
+              name === 'schedule_meal_dates'
+                ? body.p_dates
+                : [
+                    {
+                      service_date: body.p_service_date,
+                      expected_quantity: body.p_expected_quantity,
+                      low_stock_threshold: body.p_threshold,
+                    },
+                  ];
+            for (const day of dates) {
+              const existing = pending.menus.find(
+                (m) => m.meal_id === body.p_meal_id && m.service_date === day.service_date,
+              );
+              if (existing && existing.quantity !== day.expected_quantity)
+                throw new Error('Stock changed while you were editing. Refresh and try again.');
+              planner.schedule(
+                {
+                  meal_id: body.p_meal_id,
+                  service_date: day.service_date,
+                  available_from: body.p_available_from,
+                  available_until: body.p_available_until,
+                  is_available: body.p_available,
+                  quantity: body.p_quantity,
+                  low_stock_threshold: day.low_stock_threshold,
+                },
+                active,
+              );
+            }
+            data.menus = pending.menus;
+            return send(null);
           }
           return send({ message: 'Permission denied' }, 403);
         }
@@ -213,8 +234,54 @@ export async function mockSupabase(context: BrowserContext) {
             }));
             break;
           case 'canteen_settings':
+            if (method === 'PATCH') {
+              engine.admin(active);
+              Object.assign(data.settings, body);
+            }
             rows = [data.settings];
             break;
+          case 'pickup_slots':
+            if (method === 'GET') {
+              const earliestEnd = url.searchParams.get('ends_at')?.replace(/^gt\./, '');
+              const latestStart = url.searchParams.get('starts_at')?.replace(/^lte\./, '');
+              rows = data.slots
+                .filter(
+                  (slot) =>
+                    (!earliestEnd || Date.parse(slot.ends_at) > Date.parse(earliestEnd)) &&
+                    (!latestStart || Date.parse(slot.starts_at) <= Date.parse(latestStart)),
+                )
+                .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
+                .slice(0, Number(url.searchParams.get('limit') ?? data.slots.length))
+                .map((slot) =>
+                  schema.automaticSlots ? { ...slot, schedule_start: slot.starts_at } : slot,
+                );
+              break;
+            }
+            engine.admin(active);
+            if (method === 'POST') {
+              for (const row of body) {
+                if (
+                  !data.slots.some(
+                    (slot) => Date.parse(slot.starts_at) === Date.parse(row.starts_at),
+                  )
+                )
+                  data.slots.push({
+                    ...row,
+                    id: randomUUID(),
+                    capacity: 20,
+                    is_active: true,
+                    reserved: 0,
+                  });
+              }
+              data.slots.sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
+              return send(null, 201);
+            }
+            if (method === 'PATCH') {
+              const slot = data.slots.find((slot) => slot.id === id);
+              if (slot) Object.assign(slot, body);
+              return send(slot && url.searchParams.has('select') ? { id: slot.id } : null);
+            }
+            return send({ message: 'Unknown slot operation' }, 400);
           case 'orders':
             rows = ownOrders().map((o) => ({
               ...o,
@@ -235,7 +302,7 @@ export async function mockSupabase(context: BrowserContext) {
     });
   }
   await attach(context);
-  return { attach, data };
+  return { attach, data, schema };
 }
 export async function fillLogin(page: Page, role: 'student' | 'admin') {
   await page.goto('/login');

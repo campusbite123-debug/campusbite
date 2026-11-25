@@ -38,6 +38,7 @@ export type Slot = {
   capacity: number;
   is_active: boolean;
   reserved: number;
+  pickup_at_start?: boolean;
 };
 export type OrderItem = {
   meal_id: string;

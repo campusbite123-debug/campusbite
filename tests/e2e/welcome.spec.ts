@@ -6,6 +6,156 @@ test.beforeEach(async ({ context, page }) => {
   await page.clock.install({ time: new Date(FIXED_TIME) });
 });
 
+for (const width of [390, 1440]) {
+  test(`sign in moves the welcome photo into the login panel at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.goto('/');
+    await expect(page.getByTestId('welcome-screen')).toBeVisible();
+    const animation = page.evaluate(
+      () =>
+        new Promise<string[]>((resolve) => {
+          const start = document.startViewTransition.bind(document);
+          document.startViewTransition = (update) => {
+            const transition = start(update);
+            void transition.ready.then(
+              () =>
+                resolve([
+                  getComputedStyle(
+                    document.documentElement,
+                    '::view-transition-group(campusbite-photo)',
+                  ).animationName,
+                  getComputedStyle(
+                    document.documentElement,
+                    '::view-transition-new(campusbite-sign-in)',
+                  ).animationName,
+                ]),
+              () => resolve(['skipped']),
+            );
+            return transition;
+          };
+        }),
+    );
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    expect(await animation).toEqual([
+      expect.stringContaining('campusbite-photo'),
+      'sign-in-arrive',
+    ]);
+    await expect(page.getByRole('textbox', { name: 'Campus email' })).toBeEditable();
+    await expect(page.locator('html')).not.toHaveAttribute('data-sign-in-transition', /.+/);
+    const reverse = page.evaluate(
+      () =>
+        new Promise<string[]>((resolve) => {
+          const start = document.startViewTransition.bind(document);
+          document.startViewTransition = (update) => {
+            const transition = start(update);
+            void transition.ready.then(
+              () =>
+                resolve([
+                  getComputedStyle(
+                    document.documentElement,
+                    '::view-transition-group(campusbite-photo)',
+                  ).animationName,
+                  getComputedStyle(
+                    document.documentElement,
+                    '::view-transition-new(campusbite-welcome-copy)',
+                  ).animationName,
+                  document.documentElement.dataset.signInDirection ?? '',
+                ]),
+              () => resolve(['skipped']),
+            );
+            return transition;
+          };
+        }),
+    );
+    await page.getByRole('button', { name: 'Back to welcome', exact: true }).click();
+    expect(await reverse).toEqual([
+      expect.stringContaining('campusbite-photo'),
+      'sign-in-arrive',
+      'back',
+    ]);
+    await expect(page.getByTestId('welcome-screen')).toBeVisible();
+    await expect(page.locator('html')).not.toHaveAttribute('data-sign-in-transition', /.+/);
+  });
+}
+
+for (const width of [390, 1440]) {
+  test(`account panels animate in both directions at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.goto('/login');
+    await expect(page.getByText('Welcome back.', { exact: true })).toBeVisible();
+    await page.evaluate(() => {
+      const start = document.startViewTransition.bind(document);
+      document.startViewTransition = (update) => {
+        const transition = start(update);
+        void transition.ready.then(() => {
+          document.documentElement.dataset.testTransition = JSON.stringify({
+            direction: document.documentElement.dataset.signInDirection,
+            photo: getComputedStyle(
+              document.documentElement,
+              '::view-transition-group(campusbite-photo)',
+            ).animationName,
+            form: getComputedStyle(
+              document.documentElement,
+              '::view-transition-new(campusbite-sign-in)',
+            ).animationName,
+          });
+        });
+        return transition;
+      };
+    });
+    await page.getByRole('button', { name: /New to campusbite/ }).click();
+    await expect(page.getByText('Join the table.', { exact: true })).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute(
+      'data-test-transition',
+      /"direction":"register".*"photo":".*campusbite-photo.*"form":"auth-form-in"/,
+    );
+    await expect(page.locator('html')).not.toHaveAttribute('data-sign-in-transition', /.+/);
+    const photo = (await page.locator('[data-testid="auth-food-hero"]:visible').boundingBox())!;
+    const form = (await page.locator('#auth-form:visible').boundingBox())!;
+    if (width >= 1000) expect(form.x + form.width).toBeLessThanOrEqual(photo.x + 1);
+    else expect(form.y).toBeGreaterThanOrEqual(photo.y + photo.height - 1);
+    await page.screenshot({ path: `test-results/register-swap-${width}.png` });
+    await page.getByRole('button', { name: 'Return to sign in', exact: true }).click();
+    await expect(page.getByText('Welcome back.', { exact: true })).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute(
+      'data-test-transition',
+      /"direction":"login".*"form":"auth-form-in"/,
+    );
+    await expect(page.locator('html')).not.toHaveAttribute('data-sign-in-transition', /.+/);
+    if (width >= 1000) {
+      const returnedPhoto = (await page
+        .locator('[data-testid="auth-food-hero"]:visible')
+        .boundingBox())!;
+      const returnedForm = (await page.locator('#auth-form:visible').boundingBox())!;
+      expect(returnedPhoto.x + returnedPhoto.width).toBeLessThanOrEqual(returnedForm.x + 1);
+    }
+    await page.getByRole('button', { name: /New to campusbite/ }).click();
+    await expect(page.getByText('Join the table.', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Back to sign in', exact: true }).click();
+    await expect(page.getByText('Welcome back.', { exact: true })).toBeVisible();
+  });
+}
+
+test('reduced motion opens sign in directly', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await page.evaluate(() => {
+    document.startViewTransition = () => {
+      throw new Error('Unexpected motion');
+    };
+  });
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Campus email' })).toBeEditable();
+  await page.getByRole('button', { name: /New to campusbite/ }).click();
+  await expect(page.getByText('Join the table.', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Return to sign in', exact: true }).click();
+  await expect(page.getByText('Welcome back.', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Back to welcome', exact: true }).click();
+  await expect(page.getByTestId('welcome-screen')).toBeVisible();
+});
+
 test('welcome fits phones, tablets and desktop and both account actions work', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
