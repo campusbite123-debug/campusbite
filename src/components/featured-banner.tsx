@@ -1,3 +1,4 @@
+import { MotionPressable as Pressable } from '@/components/motion';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
@@ -5,44 +6,30 @@ import {
   AppState,
   Easing,
   Platform,
-  Pressable,
   StyleSheet,
   View,
 } from 'react-native';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useIsFocused } from 'expo-router';
-import { colors as c, fonts } from '@/constants/theme';
+import { fonts } from '@/constants/theme';
+import { useColors } from '@/contexts/appearance';
 import { useLayout } from '@/hooks/use-layout';
+import { money } from '@/utils/domain';
 import type { Meal } from '@/types';
-import { Button, FoodImage, Icon, T } from './ui';
+import { FoodImage, Icon, T } from './ui';
 
-const stories = [
-  {
-    eyebrow: 'YOUR BREAK, MADE BETTER',
-    title: 'Skip the line.',
-    accent: 'Savor the break.',
-    body: 'Fresh favorites.\nReady for your break.',
-  },
-  {
-    eyebrow: 'A LITTLE CAMPUS COMFORT',
-    title: 'Good food.',
-    accent: 'Better breaks.',
-    body: 'Make room for\na campus favorite.',
-  },
-  {
-    eyebrow: 'FIND YOUR NEXT FAVORITE',
-    title: 'Fresh picks.',
-    accent: 'Happy breaks.',
-    body: 'A little variety.\nA lot to enjoy.',
-  },
-  {
-    eyebrow: 'MAKE IT A GOOD BREAK',
-    title: 'Pick a favorite.',
-    accent: 'Make it yours.',
-    body: 'Explore what’s cooking.\nFind your next good meal.',
-  },
-];
+export function FeaturedBanner({
+  meals,
+  onExplore,
+  onView,
+}: {
+  meals: Meal[];
+  onExplore: () => void;
+  onView: (meal: Meal) => void;
+}) {
+  const c = useColors();
+  const styles = useComponentStyles();
 
-export function FeaturedBanner({ meals, onExplore }: { meals: Meal[]; onExplore: () => void }) {
   const { contentWidth, fontScale } = useLayout();
   const focused = useIsFocused();
   const slides = useMemo(() => {
@@ -52,7 +39,7 @@ export function FeaturedBanner({ meals, onExplore }: { meals: Meal[]; onExplore:
       ? featured.slice(0, 4)
       : active.slice(0, 4);
     if (!choices.length) choices.push(undefined);
-    return choices.map((meal, index) => ({ id: meal?.id ?? 'daily', meal, ...stories[index] }));
+    return choices.map((meal) => ({ id: meal?.id ?? 'daily', meal }));
   }, [meals]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [reducedMotion, setReducedMotion] = useState(true);
@@ -71,9 +58,14 @@ export function FeaturedBanner({ meals, onExplore }: { meals: Meal[]; onExplore:
   const width = measuredWidth || contentWidth - (contentWidth >= 1000 ? 313 : 0);
   const compact = width < 600;
   const scale = Math.max(1, fontScale);
-  const height = Math.ceil((compact ? 244 : 280) * scale);
-  const photoSize = compact ? (width < 340 ? 132 : 160) : 260;
-  const titleSize = compact ? (width < 340 ? 25 : 28) : 38;
+  const tight = width / scale < 340;
+  const padding = compact ? 18 : 30;
+  const titleSize = compact ? (tight ? 39 : 47) : 64;
+  const serifSize = compact ? (tight ? 44 : 53) : 74;
+  const photoSize = compact ? Math.round(width * 0.84) : 490;
+  const featureWidth = compact ? (tight ? 164 : 214) : 285;
+  const dotWidth = tight ? 18 : 24;
+  const meal = slide.meal;
 
   useEffect(() => {
     let disposed = false;
@@ -158,98 +150,76 @@ export function FeaturedBanner({ meals, onExplore }: { meals: Meal[]; onExplore:
       role="region"
       accessibilityLabel="Featured campus meals"
       onLayout={({ nativeEvent }) => setMeasuredWidth(Math.round(nativeEvent.layout.width))}
-      style={styles.banner}
+      style={[styles.banner, { padding, minHeight: compact ? 340 * scale : 415 * scale }]}
     >
-      <View style={{ height, overflow: 'hidden' }}>
-        <Animated.View
-          testID="banner-slide"
-          style={{
-            height,
-            opacity,
-            transform: [
-              { translateX: opacity.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) },
-            ],
-          }}
-        >
-          <View
-            style={{
-              width: compact ? '100%' : '62%',
-              padding: compact ? 20 : 29,
-              paddingRight: compact ? 20 : 0,
-              zIndex: 1,
-            }}
-          >
-            <View style={styles.eyebrow}>
-              <T style={styles.eyebrowText}>{slide.eyebrow}</T>
-            </View>
-            <T
-              testID="banner-title"
-              style={[styles.title, { fontSize: titleSize, lineHeight: titleSize + 6 }]}
-            >
-              {slide.title}
-            </T>
-            <T
-              style={[
-                styles.title,
-                { fontSize: titleSize, lineHeight: titleSize + 6, color: c.orangeDark },
-              ]}
-            >
-              {slide.accent}
-            </T>
-            <T testID="banner-body" style={[styles.body, { maxWidth: compact ? 150 : 245 }]}>
-              {slide.body}
-            </T>
-          </View>
-          <View
-            accessible
-            accessibilityRole="image"
-            accessibilityLabel={slide.meal ? `Featured ${slide.meal.name}` : 'Campus kitchen'}
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              width: photoSize,
-              height: photoSize,
-              right: compact ? -22 : -15,
-              bottom: compact ? -28 : 5,
-            }}
-          >
-            <View style={[styles.photo, { width: photoSize, height: photoSize }]}>
-              {slide.meal ? (
-                <FoodImage
-                  uri={slide.meal.image_url}
-                  style={{ width: '100%', height: '100%', borderRadius: 150 }}
-                />
-              ) : (
-                <Icon name="silverware-fork-knife" size={60} color={c.orangeDark} />
-              )}
-            </View>
-            {!compact && slide.meal && (
-              <View style={styles.caption}>
-                <T style={styles.captionLabel}>CAMPUS PICK</T>
-                <T bold numberOfLines={2} style={{ fontSize: 11, lineHeight: 16 }}>
-                  {slide.meal.name}
-                </T>
-              </View>
-            )}
-          </View>
-        </Animated.View>
-        <View
-          style={{
-            position: 'absolute',
-            left: compact ? 20 : 29,
-            bottom: 16,
-            maxWidth: width - 40,
-          }}
-        >
-          <Button small onPress={onExplore} icon="arrow-right">
-            Explore the menu
-          </Button>
-        </View>
+      <Animated.View
+        testID="banner-slide"
+        pointerEvents="none"
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel={meal ? `Featured ${meal.name}` : 'Campus kitchen'}
+        style={[
+          styles.photo,
+          { width: photoSize, height: photoSize, opacity, top: compact ? 65 : 5 },
+        ]}
+      >
+        {meal ? (
+          <FoodImage
+            uri={meal.image_url}
+            style={{ width: '100%', height: '100%', borderRadius: 300 }}
+          />
+        ) : (
+          <Icon name="silverware-fork-knife" size={80} color={c.seafoam} />
+        )}
+      </Animated.View>
+      <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" pointerEvents="none">
+        <Defs>
+          <LinearGradient id="home-hero-shade" x1="0" y1="0" x2="1" y2="0.8">
+            <Stop offset="0" stopColor={c.hero} stopOpacity="1" />
+            <Stop offset="0.38" stopColor={c.hero} stopOpacity="0.88" />
+            <Stop offset="1" stopColor={c.hero} stopOpacity="0.07" />
+          </LinearGradient>
+          <LinearGradient id="home-hero-bottom" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0.5" stopColor={c.hero} stopOpacity="0" />
+            <Stop offset="1" stopColor={c.hero} stopOpacity="0.85" />
+          </LinearGradient>
+        </Defs>
+        <Rect width="100%" height="100%" fill="url(#home-hero-shade)" />
+        <Rect width="100%" height="100%" fill="url(#home-hero-bottom)" />
+      </Svg>
+      <View style={styles.club}>
+        <Icon name="star-four-points" color={c.lime} size={17} />
+        <T style={styles.clubText}>THE CAMPUS LUNCH CLUB</T>
       </View>
-      {slides.length > 1 && (
-        <View style={styles.controls}>
-          <View style={{ flexDirection: 'row' }}>
-            {slides.map((item, position) => (
+      <View style={{ marginTop: compact ? 14 : 20 }}>
+        <T
+          accessibilityRole="header"
+          style={[styles.headline, { fontSize: titleSize, lineHeight: titleSize + 3 }]}
+        >
+          Good food.
+        </T>
+        <T style={[styles.serif, { fontSize: serifSize, lineHeight: serifSize + 1 }]}>
+          Better breaks.
+        </T>
+      </View>
+      <T testID="banner-body" style={styles.body}>
+        Campus favorites, made fresh.{'\n'}Ready when you are.
+      </T>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Explore the menu"
+        onPress={onExplore}
+        style={({ pressed }) => [styles.explore, { opacity: pressed ? 0.85 : 1 }]}
+      >
+        <T bold style={{ color: c.ink, fontSize: 12 }}>
+          Explore the menu
+        </T>
+        <Icon name="arrow-right" size={17} color={c.ink} />
+      </Pressable>
+      <View style={styles.footer}>
+        <View style={styles.dots}>
+          {slides.length > 1 &&
+            slides.map((item, position) => (
               <Pressable
                 key={item.id}
                 accessibilityRole="button"
@@ -258,70 +228,139 @@ export function FeaturedBanner({ meals, onExplore }: { meals: Meal[]; onExplore:
                 accessibilityState={{ selected: position === index }}
                 aria-pressed={position === index}
                 onPress={() => show(position)}
-                style={styles.dotButton}
+                style={[styles.dotButton, { width: dotWidth }]}
               >
                 <View
                   style={{
-                    width: position === index ? 21 : 6,
-                    height: 6,
+                    width: position === index ? 13 : 4,
+                    height: 4,
                     borderRadius: 3,
-                    backgroundColor: position === index ? c.orangeDark : '#D6B497',
+                    backgroundColor: position === index ? c.lime : c.seafoam + '70',
                   }}
                 />
               </Pressable>
             ))}
-          </View>
         </View>
-      )}
+        {meal && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`View featured ${meal.name}`}
+            onPress={() => onView(meal)}
+            style={({ pressed }) => [
+              styles.feature,
+              { width: featureWidth, opacity: pressed ? 0.85 : 1 },
+            ]}
+          >
+            <View style={styles.featureIcon}>
+              <Icon name="star-four-points" size={21} color={c.lime} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <T style={styles.featureLabel}>TODAY’S FEATURE</T>
+              <T testID="banner-title" numberOfLines={1} style={styles.featureTitle}>
+                {meal.name}
+              </T>
+              <T style={styles.featureMeta}>
+                {money(meal.price)} · {meal.prep_minutes} min prep
+              </T>
+            </View>
+            <Icon name="chevron-right" color={c.white} size={16} />
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  banner: { marginBottom: 26, borderRadius: 22, overflow: 'hidden', backgroundColor: '#FEE9D8' },
-  eyebrow: {
-    alignSelf: 'flex-start',
-    borderRadius: 20,
-    backgroundColor: '#FFF8EF',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    marginBottom: 12,
-  },
-  eyebrowText: {
-    fontFamily: fonts.bold,
-    fontSize: 8,
-    lineHeight: 11,
-    letterSpacing: 1.1,
-    color: c.orangeDark,
-  },
-  title: { fontFamily: fonts.display, letterSpacing: -1.2 },
-  body: { marginTop: 10, fontSize: 12, lineHeight: 18, color: '#967B66' },
-  photo: {
-    borderRadius: 150,
-    backgroundColor: '#F9C79E',
-    padding: 12,
-    transform: [{ rotate: '-12deg' }],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  caption: {
-    position: 'absolute',
-    left: -20,
-    bottom: 20,
-    maxWidth: 190,
-    borderRadius: 12,
-    padding: 12,
-    gap: 4,
-    backgroundColor: c.white,
-    boxShadow: '0px 5px 16px rgba(86, 53, 28, 0.08)',
-  },
-  captionLabel: { fontFamily: fonts.semibold, fontSize: 8, letterSpacing: 1, color: c.orangeDark },
-  controls: {
-    minHeight: 44,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dotButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-});
+function useComponentStyles() {
+  const c = useColors();
+  return React.useMemo(
+    () =>
+      StyleSheet.create({
+        banner: { backgroundColor: c.hero, borderRadius: 20, overflow: 'hidden', marginBottom: 18 },
+        photo: {
+          position: 'absolute',
+          right: -35,
+          borderRadius: 300,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        club: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          alignSelf: 'flex-start',
+          gap: 7,
+          paddingHorizontal: 10,
+          paddingVertical: 4,
+          borderWidth: 1,
+          borderColor: c.lime + '45',
+          borderRadius: 24,
+          backgroundColor: c.white + '07',
+        },
+        clubText: { fontFamily: fonts.bold, fontSize: 8, letterSpacing: 1.1, color: c.lime },
+        headline: { fontFamily: fonts.display, color: c.white, letterSpacing: -2.6 },
+        serif: { fontFamily: fonts.serifItalic, color: c.lime, letterSpacing: -1.5, marginTop: -5 },
+        body: {
+          fontFamily: fonts.medium,
+          color: c.white,
+          fontSize: 12,
+          lineHeight: 17,
+          marginTop: 8,
+          maxWidth: 255,
+        },
+        explore: {
+          alignSelf: 'flex-start',
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          minHeight: 44,
+          paddingHorizontal: 14,
+          backgroundColor: c.lime,
+          borderRadius: 10,
+          marginTop: 12,
+        },
+        footer: {
+          flexDirection: 'row',
+          alignItems: 'flex-end',
+          justifyContent: 'space-between',
+          gap: 8,
+          marginTop: 10,
+        },
+        dots: { flexDirection: 'row', marginLeft: -4 },
+        dotButton: { height: 44, alignItems: 'center', justifyContent: 'center' },
+        feature: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 7,
+          padding: 9,
+          minHeight: 62,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: c.seafoam + '45',
+          backgroundColor: c.hero + 'DD',
+        },
+        featureIcon: {
+          width: 27,
+          height: 27,
+          borderRadius: 8,
+          backgroundColor: c.lime + '15',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        featureLabel: {
+          fontFamily: fonts.bold,
+          fontSize: 7,
+          lineHeight: 10,
+          letterSpacing: 1,
+          color: c.lime,
+        },
+        featureTitle: {
+          fontFamily: fonts.bold,
+          fontSize: 10,
+          lineHeight: 14,
+          color: c.white,
+        },
+        featureMeta: { fontFamily: fonts.medium, fontSize: 9, lineHeight: 12, color: c.seafoam },
+      }),
+    [c],
+  );
+}

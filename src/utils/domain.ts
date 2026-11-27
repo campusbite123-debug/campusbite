@@ -191,6 +191,7 @@ export const registrationSchema = z
 export const mealSchema = z.object({
   name: z.string().trim().min(2).max(100),
   description: z.string().trim().min(5).max(1000),
+  ingredients: z.array(z.string().trim().min(1).max(100)).max(60).nullable().optional(),
   category_id: z.string().min(1),
   price: z.number().int().min(1).max(1000000),
   prep_minutes: z.number().int().min(1).max(120),

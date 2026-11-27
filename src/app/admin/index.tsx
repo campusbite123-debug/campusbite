@@ -1,9 +1,10 @@
+import { MotionPressable as Pressable } from '@/components/motion';
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { router } from 'expo-router';
 import { AdminHeader, DataPage, Metric, SalesChart } from '@/components/admin';
-import { Button, Empty, Icon, StatusBadge, T, s } from '@/components/ui';
-import { colors as c } from '@/constants/theme';
+import { Button, Empty, Icon, StatusBadge, T, useStyles } from '@/components/ui';
+import { useColors } from '@/contexts/appearance';
 import { useLayout } from '@/hooks/use-layout';
 import {
   collectedRevenue,
@@ -15,6 +16,8 @@ import {
   time,
 } from '@/utils/domain';
 export default function Dashboard() {
+  const c = useColors();
+  const s = useStyles();
   const { contentWidth } = useLayout();
   return (
     <DataPage>

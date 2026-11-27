@@ -7,7 +7,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth, useCart, useSnapshot, useToast } from '@/contexts/app';
 import { placeOrder } from '@/services/repository';
 import { cartTotal, errorMessage, formatDate, money, time, validSlots } from '@/utils/domain';
-import { colors as c, fonts } from '@/constants/theme';
+import { fonts } from '@/constants/theme';
+import { useColors } from '@/contexts/appearance';
+import { PageHeading } from '@/components/page-heading';
 import { Page } from '@/components/shell';
 import { useLayout } from '@/hooks/use-layout';
 import {
@@ -20,9 +22,11 @@ import {
   Pill,
   Quantity,
   T,
-  s,
+  useStyles,
 } from '@/components/ui';
 export default function Cart() {
+  const c = useColors();
+  const s = useStyles();
   const { data, error, isLoading, refetch } = useSnapshot();
   const { user } = useAuth();
   const { lines, setQuantity, clear } = useCart();
@@ -99,13 +103,11 @@ export default function Cart() {
         ) : undefined
       }
     >
-      <T muted style={{ fontSize: 12, marginBottom: 7 }}>
-        ONE STEP CLOSER TO YOUR NEXT GOOD MEAL
-      </T>
-      <T style={s.h1}>Your bag, your break.</T>
-      <T muted style={{ marginTop: 9, marginBottom: 27 }}>
-        A few favorites. A pickup time. You’re all set.
-      </T>
+      <PageHeading
+        eyebrow="ONE STEP CLOSER TO YOUR NEXT GOOD MEAL"
+        title="Your bag, your break."
+        subtitle="A few favorites. A pickup time. You’re all set."
+      />
       {!lines.length ? (
         <View style={s.card}>
           <Empty
@@ -248,7 +250,7 @@ export default function Cart() {
               </View>
             ))}
             <View style={s.divider} />
-            <View style={[s.row, { backgroundColor: '#F8F8F2', padding: 14, borderRadius: 12 }]}>
+            <View style={[s.row, { backgroundColor: c.greenLight, padding: 14, borderRadius: 12 }]}>
               <Icon name="cash-multiple" color={c.green} />
               <View style={{ flex: 1 }}>
                 <T bold style={{ fontSize: 12 }}>

@@ -13,12 +13,13 @@ import {
   Search,
   Sheet,
   T,
-  s,
+  useStyles,
 } from '@/components/ui';
 import { useAuth, useToast } from '@/contexts/app';
-import { colors as c } from '@/constants/theme';
+import { useColors } from '@/contexts/appearance';
 import { saveMeal, scheduleMealDates } from '@/services/repository';
 import { pickMealImage } from '@/services/media';
+import { mealIngredients } from '@/constants/meal-ingredients';
 import type { DailyMenu, Meal, Snapshot } from '@/types';
 import { bookablePickup, dayKey, formatDate, futureDay, money } from '@/utils/domain';
 function MealEditor({
@@ -30,9 +31,13 @@ function MealEditor({
   data: Snapshot;
   onClose: () => void;
 }) {
+  const c = useColors();
+  const s = useStyles();
   const { user } = useAuth();
   const { busy, run } = useAction();
   const toast = useToast();
+  const originalIngredients = meal ? mealIngredients(meal).join('\n') : '';
+  const [ingredients, setIngredients] = useState(originalIngredients);
   const [form, setForm] = useState({
     name: meal?.name ?? '',
     description: meal?.description ?? '',
@@ -53,6 +58,14 @@ function MealEditor({
         onChangeText={(v) => field('description', v)}
         multiline
       />
+      {data.meals.some((item) => 'ingredients' in item) && (
+        <Input
+          label="Ingredients (one per line)"
+          multiline
+          value={ingredients}
+          onChangeText={setIngredients}
+        />
+      )}
       <T bold style={{ fontSize: 12, marginBottom: 10 }}>
         Category
       </T>
@@ -139,6 +152,15 @@ function MealEditor({
                   id: meal?.id,
                   name: form.name,
                   description: form.description,
+                  ...(ingredients !== originalIngredients ||
+                  (meal && 'ingredients' in meal && originalIngredients)
+                    ? {
+                        ingredients: ingredients
+                          .split('\n')
+                          .map((value) => value.trim())
+                          .filter(Boolean),
+                      }
+                    : {}),
                   category_id: form.category_id,
                   price: Math.round(Number(form.price) * 100),
                   prep_minutes: Number(form.prep),
@@ -167,6 +189,8 @@ function ScheduleEditor({
   data: Snapshot;
   onClose: () => void;
 }) {
+  const c = useColors();
+  const s = useStyles();
   const { user } = useAuth();
   const { busy, run } = useAction();
   const today = dayKey();
@@ -360,6 +384,8 @@ function ScheduleEditor({
   );
 }
 export default function MenuManagement() {
+  const c = useColors();
+  const s = useStyles();
   const [search, setSearch] = useState('');
   const [edit, setEdit] = useState<Meal | null | undefined>(undefined);
   const [schedule, setSchedule] = useState<Meal | null>(null);

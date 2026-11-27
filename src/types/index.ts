@@ -14,6 +14,7 @@ export type Meal = {
   id: string;
   name: string;
   description: string;
+  ingredients?: string[] | null;
   category_id: string;
   price: number;
   image_url: string;

@@ -1,12 +1,15 @@
+import { MotionPressable as Pressable } from '@/components/motion';
 import React, { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { AdminHeader, DataPage } from '@/components/admin';
 import { OrderDetail } from '@/components/order-detail';
-import { Empty, Pill, Search, Sheet, StatusBadge, T, s } from '@/components/ui';
-import { colors as c } from '@/constants/theme';
+import { Empty, Pill, Search, Sheet, StatusBadge, T, useStyles } from '@/components/ui';
+import { useColors } from '@/contexts/appearance';
 import { formatDate, money, statuses, time } from '@/utils/domain';
 export default function AdminOrders() {
+  const c = useColors();
+  const s = useStyles();
   const params = useLocalSearchParams<{ id?: string }>();
   const selected = params.id ?? '';
   const setSelected = (id: string | null) => router.setParams({ id: id ?? '', placed: '' });

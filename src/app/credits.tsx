@@ -3,13 +3,15 @@ import { View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import { Page, Brand } from '@/components/shell';
-import { Button, T, s } from '@/components/ui';
+import { Button, T, useStyles } from '@/components/ui';
+import { PageHeading } from '@/components/page-heading';
 export default function Credits() {
+  const s = useStyles();
   return (
     <Page style={{ maxWidth: 700, paddingTop: 45 }}>
       <Brand />
       <View style={[s.card, { marginTop: 30, gap: 18 }]}>
-        <T style={s.h1}>A little photo credit.</T>
+        <PageHeading title="A little photo credit." style={{ marginBottom: 0 }} />
         <T style={{ lineHeight: 23 }}>
           Chicken adobo meal 20231025: Ian Lopez (Ianlopez1115). Philippine Sisig: Theglennpalacio /
           Glenn Palacio Photography. Both photographs are used under Creative Commons

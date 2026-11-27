@@ -6,6 +6,44 @@ test.beforeEach(async ({ context, page }) => {
   await page.clock.install({ time: new Date(FIXED_TIME) });
 });
 
+test('home category tiles open the matching menu and View all opens the full menu', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page, 'student');
+  await expect(page.getByRole('heading', { name: 'Meal categories', exact: true })).toBeVisible();
+  await page.clock.runFor(350);
+  await page
+    .getByTestId('page-heading')
+    .screenshot({ path: 'test-results/meal-categories-heading.png' });
+  await page.getByRole('link', { name: 'Rice Meals', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'View Chicken Adobo with Rice', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'View Pancit Canton', exact: true })).toHaveCount(
+    0,
+  );
+  await page.getByRole('tab', { name: 'Home', exact: true }).click();
+  await page.getByRole('link', { name: 'View all meals' }).click();
+  await expect(page.getByRole('button', { name: 'View Pancit Canton', exact: true })).toBeVisible();
+});
+
+test('the Home hero opens the featured meal details', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await signIn(page, 'student');
+  const banner = page.getByTestId('featured-banner');
+  await expect(banner.getByText('Good food.', { exact: true })).toBeVisible();
+  await expect(banner.getByText('Better breaks.', { exact: true })).toBeVisible();
+  await banner
+    .getByRole('button', { name: 'View featured Chicken Adobo with Rice', exact: true })
+    .click();
+  await expect(page.getByText('A closer look', { exact: true })).toBeVisible();
+  await expect(page.getByText('Chicken Adobo with Rice', { exact: true }).last()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'See ingredients', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add to bag · ₱75', exact: true })).toBeVisible();
+});
+
 test('featured banner loops automatically and continues after manual selection without playback controls', async ({
   page,
 }) => {
@@ -14,6 +52,8 @@ test('featured banner loops automatically and continues after manual selection w
   page.on('pageerror', (error) => errors.push(error.message));
   await signIn(page, 'student');
   const banner = page.getByTestId('featured-banner');
+  await expect(banner.getByText('Good food.', { exact: true })).toBeVisible();
+  await expect(banner.getByText('Better breaks.', { exact: true })).toBeVisible();
   const feature = (number: number) =>
     banner.getByRole('button', { name: new RegExp(`^Show feature ${number}:`) });
   await expect(banner.getByTestId('banner-position')).toHaveCount(0);
@@ -24,15 +64,18 @@ test('featured banner loops automatically and continues after manual selection w
   await page.clock.fastForward(6600);
   await page.clock.runFor(500);
   await expect(feature(2)).toHaveAttribute('aria-pressed', 'true');
-  await expect(banner.getByTestId('banner-title')).toHaveText('Good food.');
+  await expect(banner.getByTestId('banner-title')).toHaveText('Pork Sisig with Rice');
   await expect(
-    banner.getByRole('img', { name: 'Featured Pork Sisig with Rice', exact: true }),
+    banner.getByRole('img', {
+      name: 'Featured Pork Sisig with Rice',
+      exact: true,
+    }),
   ).toBeVisible();
 
   await banner.getByRole('button', { name: /^Show feature 4:/ }).click();
   await page.clock.runFor(500);
   await expect(feature(4)).toHaveAttribute('aria-pressed', 'true');
-  await expect(banner.getByTestId('banner-title')).toHaveText('Pick a favorite.');
+  await expect(banner.getByTestId('banner-title')).toHaveText('Classic Campus Burger');
   await expect(banner.getByRole('button', { name: /^Show feature 4:/ })).toHaveAttribute(
     'aria-pressed',
     'true',
@@ -82,6 +125,7 @@ test('reduced motion keeps the banner still and permits manual selection', async
     'true',
   );
   await expect(banner.getByTestId('banner-slide')).toHaveCSS('opacity', '1');
+  await expect(banner.getByTestId('banner-title')).toHaveText('Fried Chicken with Rice');
   await expect(
     banner.getByRole('img', { name: 'Featured Fried Chicken with Rice', exact: true }),
   ).toBeVisible();

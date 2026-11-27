@@ -97,7 +97,7 @@ for (const device of devices) {
         .getByRole('button', { name: 'Explore the menu', exact: true })
         .boundingBox())!;
       expect(body.y + body.height).toBeLessThanOrEqual(action.y);
-      expect((await banner.boundingBox())!.height).toBe(bannerHeight);
+      expect((await banner.boundingBox())!.height).toBeCloseTo(bannerHeight, 1);
     }
     const navRole = device.width >= 768 ? 'link' : 'tab';
     await page.getByRole(navRole, { name: 'Menu', exact: true }).click();

@@ -4,12 +4,15 @@ import { Switch } from 'react-native-paper';
 import { useAuth } from '@/contexts/app';
 import { saveSettings, saveSlot } from '@/services/repository';
 import { AdminHeader, DataPage, useAction } from '@/components/admin';
-import { Button, Input, Pill, Sheet, T, s } from '@/components/ui';
-import { colors as c } from '@/constants/theme';
+import { Button, Input, Pill, Sheet, T, useStyles } from '@/components/ui';
+import { useColors } from '@/contexts/appearance';
 import type { Settings, Slot, Snapshot } from '@/types';
 import { clockTime, dayKey, formatDate, futureDay, time, upcomingSlotsOnDay } from '@/utils/domain';
 import { useLayout } from '@/hooks/use-layout';
+import { PalettePicker } from '@/components/palette-picker';
 function SettingsForm({ settings }: { settings: Settings }) {
+  const c = useColors();
+  const s = useStyles();
   const { isPhone } = useLayout();
   const { user } = useAuth();
   const { busy, run } = useAction();
@@ -87,6 +90,8 @@ function SettingsForm({ settings }: { settings: Settings }) {
   );
 }
 function SlotEditor({ slot, onClose }: { slot: Slot; onClose: () => void }) {
+  const c = useColors();
+  const s = useStyles();
   const { user } = useAuth();
   const { busy, run } = useAction();
   const [capacity, setCapacity] = useState(String(slot.capacity));
@@ -128,6 +133,8 @@ function SlotEditor({ slot, onClose }: { slot: Slot; onClose: () => void }) {
   );
 }
 function Slots({ data }: { data: Snapshot }) {
+  const c = useColors();
+  const s = useStyles();
   const [date, setDate] = useState(dayKey());
   const [edit, setEdit] = useState<Slot | null>(null);
   const slots = upcomingSlotsOnDay(data.slots, date);
@@ -178,6 +185,7 @@ function Slots({ data }: { data: Snapshot }) {
   );
 }
 export default function AdminSettings() {
+  const s = useStyles();
   return (
     <DataPage>
       {(data) => (
@@ -186,6 +194,9 @@ export default function AdminSettings() {
             title="Your canteen, your way."
             subtitle="Operating hours, pickup schedules and the details that keep things running."
           />
+          <View style={[s.card, { maxWidth: 700, marginBottom: 24 }]}>
+            <PalettePicker />
+          </View>
           <SettingsForm settings={data.settings} />
           <Slots data={data} />
         </>

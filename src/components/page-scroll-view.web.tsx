@@ -1,10 +1,12 @@
+import { useColors } from '@/contexts/appearance';
 import { useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, type ScrollViewProps } from 'react-native';
-import { colors } from '@/constants/theme';
 import { T } from './ui';
 
 // The browser version of React Native's RefreshControl has no gesture handling.
 export function PageScrollView({ refreshControl, children, ...props }: ScrollViewProps) {
+  const c = useColors();
+
   const start = useRef<{ x: number; y: number } | null>(null);
   const [ready, setReady] = useState(false);
   if (!refreshControl) return <ScrollView {...props}>{children}</ScrollView>;
@@ -57,9 +59,9 @@ export function PageScrollView({ refreshControl, children, ...props }: ScrollVie
       }}
     >
       {refreshing ? (
-        <ActivityIndicator accessibilityLabel="Refreshing Home" color={colors.orangeDark} />
+        <ActivityIndicator accessibilityLabel="Refreshing Home" color={c.ink} />
       ) : ready ? (
-        <T style={{ textAlign: 'center', color: colors.orangeDark }}>Release to refresh</T>
+        <T style={{ textAlign: 'center', color: c.ink }}>Release to refresh</T>
       ) : null}
       {children}
     </ScrollView>

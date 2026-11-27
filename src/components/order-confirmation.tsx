@@ -1,10 +1,12 @@
 import React from 'react';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { Modal, Portal } from 'react-native-paper';
+import { Portal } from 'react-native-paper';
+import { AppModal as Modal } from './app-modal';
 import type { Order, Snapshot } from '@/types';
-import { colors as c, fonts } from '@/constants/theme';
+import { fonts } from '@/constants/theme';
+import { useColors } from '@/contexts/appearance';
 import { formatDate, money, time } from '@/utils/domain';
-import { Button, FoodImage, Icon, IconButton, StatusBadge, T, s } from './ui';
+import { Button, FoodImage, Icon, IconButton, StatusBadge, T, useStyles } from './ui';
 
 export function OrderConfirmation({
   order,
@@ -19,6 +21,10 @@ export function OrderConfirmation({
   onTrack: () => void;
   onBrowse: () => void;
 }) {
+  const c = useColors();
+  const styles = useComponentStyles();
+  const s = useStyles();
+
   const { width, height } = useWindowDimensions();
   const compact = width < 600;
   const cancelled = order.status === 'Cancelled';
@@ -101,7 +107,7 @@ export function OrderConfirmation({
                 ]}
               >
                 <View style={[s.row, { gap: 7 }]}>
-                  <Icon name="ticket-confirmation-outline" size={17} color="#D7E5CD" />
+                  <Icon name="ticket-confirmation-outline" size={17} color={c.greenLight} />
                   <T style={styles.ticketLabel}>
                     {cancelled || completed ? 'PICKUP STATUS' : 'YOUR PICKUP CODE'}
                   </T>
@@ -121,7 +127,7 @@ export function OrderConfirmation({
                   {cancelled ? 'Cancelled' : completed ? 'Picked up' : order.pickup_code}
                 </T>
                 <View style={[styles.ticketDivider, compact && { marginVertical: 11 }]} />
-                <T style={{ color: '#D7E5CD', fontSize: 11, lineHeight: 17 }}>
+                <T style={{ color: c.greenLight, fontSize: 11, lineHeight: 17 }}>
                   {cancelled
                     ? 'No payment is due for this order.'
                     : completed
@@ -261,102 +267,119 @@ export function OrderConfirmation({
   );
 }
 
-const styles = StyleSheet.create({
-  modal: { backgroundColor: c.white, borderRadius: 28, overflow: 'hidden', alignSelf: 'center' },
-  hero: { backgroundColor: '#FFF7EF', paddingTop: 26, paddingBottom: 24, alignItems: 'center' },
-  close: { position: 'absolute', right: 12, top: 12 },
-  checkHalo: { padding: 9, backgroundColor: '#FFE9D6', borderRadius: 50, marginBottom: 17 },
-  check: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: c.orange,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  eyebrow: { fontFamily: fonts.semibold, fontSize: 9, letterSpacing: 2, color: '#9A633C' },
-  title: {
-    fontFamily: fonts.display,
-    fontSize: 30,
-    letterSpacing: -1,
-    marginTop: 9,
-    textAlign: 'center',
-    color: c.ink,
-  },
-  subtitle: {
-    fontSize: 12,
-    lineHeight: 20,
-    color: '#786F63',
-    textAlign: 'center',
-    maxWidth: 350,
-    marginTop: 9,
-  },
-  orderLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  label: { fontSize: 9, letterSpacing: 1.2, color: '#73796F', fontFamily: fonts.semibold },
-  ticket: { backgroundColor: '#293C2F', borderRadius: 18, padding: 22, overflow: 'hidden' },
-  ticketLabel: { fontSize: 9, letterSpacing: 1.5, color: '#D7E5CD', fontFamily: fonts.semibold },
-  code: {
-    fontFamily: fonts.bold,
-    fontVariant: ['tabular-nums'],
-    fontSize: 30,
-    letterSpacing: 4,
-    color: c.white,
-    marginTop: 17,
-  },
-  ticketDivider: {
-    borderTopWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: '#6C8067',
-    marginVertical: 15,
-  },
-  notch: {
-    width: 18,
-    height: 18,
-    backgroundColor: c.white,
-    borderRadius: 9,
-    position: 'absolute',
-    top: 100,
-  },
-  detailIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: c.peach,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  detailText: { fontSize: 11, color: '#74786E' },
-  receipt: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: c.line, paddingTop: 19 },
-  item: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 17 },
-  photo: { width: 44, height: 44, borderRadius: 12 },
-  photoFallback: { backgroundColor: c.peach, alignItems: 'center', justifyContent: 'center' },
-  total: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 16,
-    backgroundColor: '#F7F8F2',
-    padding: 16,
-    borderRadius: 14,
-    marginVertical: 18,
-  },
-  amount: {
-    fontFamily: fonts.bold,
-    fontVariant: ['tabular-nums'],
-    fontSize: 27,
-    color: c.ink,
-    letterSpacing: -0.6,
-  },
-  footer: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderColor: c.line,
-    gap: 10,
-    backgroundColor: c.white,
-  },
-});
+function useComponentStyles() {
+  const c = useColors();
+  return React.useMemo(
+    () =>
+      StyleSheet.create({
+        modal: {
+          backgroundColor: c.white,
+          borderRadius: 28,
+          overflow: 'hidden',
+          alignSelf: 'center',
+        },
+        hero: { backgroundColor: c.peach, paddingTop: 26, paddingBottom: 24, alignItems: 'center' },
+        close: { position: 'absolute', right: 12, top: 12 },
+        checkHalo: { padding: 9, backgroundColor: c.white, borderRadius: 50, marginBottom: 17 },
+        check: {
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          backgroundColor: c.orange,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        eyebrow: { fontFamily: fonts.semibold, fontSize: 9, letterSpacing: 2, color: c.orangeDark },
+        title: {
+          fontFamily: fonts.display,
+          fontSize: 30,
+          letterSpacing: -1,
+          marginTop: 9,
+          textAlign: 'center',
+          color: c.ink,
+        },
+        subtitle: {
+          fontSize: 12,
+          lineHeight: 20,
+          color: c.muted,
+          textAlign: 'center',
+          maxWidth: 350,
+          marginTop: 9,
+        },
+        orderLine: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+        },
+        label: { fontSize: 9, letterSpacing: 1.2, color: c.muted, fontFamily: fonts.semibold },
+        ticket: { backgroundColor: c.ink, borderRadius: 18, padding: 22, overflow: 'hidden' },
+        ticketLabel: {
+          fontSize: 9,
+          letterSpacing: 1.5,
+          color: c.greenLight,
+          fontFamily: fonts.semibold,
+        },
+        code: {
+          fontFamily: fonts.bold,
+          fontVariant: ['tabular-nums'],
+          fontSize: 30,
+          letterSpacing: 4,
+          color: c.white,
+          marginTop: 17,
+        },
+        ticketDivider: {
+          borderTopWidth: 1,
+          borderStyle: 'dashed',
+          borderColor: c.greenLight + '66',
+          marginVertical: 15,
+        },
+        notch: {
+          width: 18,
+          height: 18,
+          backgroundColor: c.white,
+          borderRadius: 9,
+          position: 'absolute',
+          top: 100,
+        },
+        detailIcon: {
+          width: 36,
+          height: 36,
+          borderRadius: 12,
+          backgroundColor: c.peach,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        detailText: { fontSize: 11, color: c.muted },
+        receipt: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: c.line, paddingTop: 19 },
+        item: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 17 },
+        photo: { width: 44, height: 44, borderRadius: 12 },
+        photoFallback: { backgroundColor: c.peach, alignItems: 'center', justifyContent: 'center' },
+        total: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+          backgroundColor: c.greenLight,
+          padding: 16,
+          borderRadius: 14,
+          marginVertical: 18,
+        },
+        amount: {
+          fontFamily: fonts.bold,
+          fontVariant: ['tabular-nums'],
+          fontSize: 27,
+          color: c.ink,
+          letterSpacing: -0.6,
+        },
+        footer: {
+          padding: 20,
+          borderTopWidth: 1,
+          borderColor: c.line,
+          gap: 10,
+          backgroundColor: c.white,
+        },
+      }),
+    [c],
+  );
+}

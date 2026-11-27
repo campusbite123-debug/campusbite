@@ -10,11 +10,6 @@ test('pulling down from the top of Home refreshes stock and keeps the current se
   const { data } = await mockSupabase(context);
   await page.clock.install({ time: new Date(FIXED_TIME) });
   await signIn(page, 'student');
-  const search = page.getByPlaceholder('Search for your next favorite meal…');
-  await search.fill('adobo');
-  await search.blur();
-  const add = page.getByRole('button', { name: 'Add Chicken Adobo with Rice to bag' });
-  await expect(add).toBeEnabled();
 
   const scroll = page.getByTestId('page-scroll');
   const touch = await context.newCDPSession(page);
@@ -43,6 +38,11 @@ test('pulling down from the top of Home refreshes stock and keeps the current se
   await scroll.evaluate((el) => {
     el.scrollTop = 0;
   });
+  const search = page.getByPlaceholder('Search for a meal');
+  await search.fill('adobo');
+  await search.blur();
+  const add = page.getByRole('button', { name: 'Add Chicken Adobo with Rice to bag' });
+  await expect(add).toBeEnabled();
   await drag(110, 15);
   await expect(cue).toBeHidden();
   await release();

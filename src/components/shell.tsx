@@ -1,16 +1,20 @@
+import { MotionPressable as Pressable, Reveal } from '@/components/motion';
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import type { ScrollViewProps, StyleProp, ViewStyle } from 'react-native';
 import { router, Slot, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth, useCart, useSnapshot, useToast } from '@/contexts/app';
 import { useLayout } from '@/hooks/use-layout';
-import { colors as c, fonts } from '@/constants/theme';
+import { fonts } from '@/constants/theme';
+import { useColors } from '@/contexts/appearance';
 import { todayLabel } from '@/utils/domain';
-import { Button, Empty, Icon, IconButton, Loading, Sheet, T, s } from './ui';
+import { Button, Empty, Icon, Loading, Sheet, T, useStyles } from './ui';
 import { MobileNavigation } from './mobile-navigation';
 import { BrandMark } from './brand-mark';
 import { PageScrollView } from './page-scroll-view';
+import { NotificationCenter } from './notification-center';
+import { CartAnimationTarget } from '@/contexts/cart-motion';
 
 const studentNav = [
   ['Home', 'home-outline', '/home'],
@@ -30,6 +34,9 @@ const adminNav = [
 ];
 
 export function Brand({ compact = false, small = false }: { compact?: boolean; small?: boolean }) {
+  const c = useColors();
+  const s = useStyles();
+
   const { width, fontScale } = useLayout();
   const iconOnly = compact || (width < 600 && fontScale > 1.3);
   return (
@@ -56,7 +63,13 @@ export function Brand({ compact = false, small = false }: { compact?: boolean; s
         <View>
           <T style={{ fontFamily: fonts.display, fontSize: small ? 20 : 22, letterSpacing: -0.9 }}>
             campus
-            <T style={{ fontSize: small ? 20 : 22, color: c.orange, fontFamily: fonts.display }}>
+            <T
+              style={{
+                fontSize: small ? 20 : 22,
+                color: c.orange,
+                fontFamily: fonts.display,
+              }}
+            >
               bite
             </T>
           </T>
@@ -70,10 +83,15 @@ export function Brand({ compact = false, small = false }: { compact?: boolean; s
 }
 
 export function Shell({ admin = false }: { admin?: boolean }) {
+  const c = useColors();
+  const s = useStyles();
+
   const { width, hasSidebar, fullSidebar, sidebarWidth, pagePadding } = useLayout();
   const insets = useSafeAreaInsets();
   const { user, loading, logout, recovering } = useAuth();
   const path = usePathname();
+  const studentHome = !admin && path === '/home';
+  const mobileHome = studentHome && !hasSidebar;
   const { lines } = useCart();
   const { data } = useSnapshot();
   const toast = useToast();
@@ -114,7 +132,7 @@ export function Shell({ admin = false }: { admin?: boolean }) {
       style={{
         flex: 1,
         minWidth: 0,
-        backgroundColor: c.cream,
+        backgroundColor: c.white,
         flexDirection: hasSidebar ? 'row' : 'column',
         paddingTop: insets.top,
       }}
@@ -163,18 +181,28 @@ export function Shell({ admin = false }: { admin?: boolean }) {
                     paddingHorizontal: fullSidebar ? 14 : 3,
                     paddingVertical: 10,
                     borderRadius: 13,
-                    backgroundColor: selected(href) ? c.peach : 'transparent',
+                    backgroundColor: selected(href) ? c.orange : 'transparent',
                   }}
                 >
-                  <Icon
-                    name={icon}
-                    size={fullSidebar ? 21 : 24}
-                    color={selected(href) ? c.orange : c.muted}
-                  />
+                  {href === '/cart' ? (
+                    <CartAnimationTarget>
+                      <Icon
+                        name={icon}
+                        size={fullSidebar ? 21 : 24}
+                        color={selected(href) ? c.white : c.muted}
+                      />
+                    </CartAnimationTarget>
+                  ) : (
+                    <Icon
+                      name={icon}
+                      size={fullSidebar ? 21 : 24}
+                      color={selected(href) ? c.white : c.muted}
+                    />
+                  )}
                   <T
                     style={{
                       fontFamily: selected(href) ? fonts.bold : fonts.medium,
-                      color: selected(href) ? c.orangeDark : '#70736C',
+                      color: selected(href) ? c.white : c.muted,
                       fontSize: fullSidebar ? 12 : 10,
                       textAlign: fullSidebar ? 'left' : 'center',
                       flexShrink: 1,
@@ -183,7 +211,14 @@ export function Shell({ admin = false }: { admin?: boolean }) {
                     {fullSidebar ? label : label === 'Menu management' ? 'Menu' : label}
                   </T>
                   {fullSidebar && href === '/cart' && itemCount > 0 && (
-                    <T bold style={{ marginLeft: 'auto', color: c.orange, fontSize: 11 }}>
+                    <T
+                      bold
+                      style={{
+                        marginLeft: 'auto',
+                        color: selected(href) ? c.white : c.orange,
+                        fontSize: 11,
+                      }}
+                    >
                       {itemCount}
                     </T>
                   )}
@@ -201,11 +236,11 @@ export function Shell({ admin = false }: { admin?: boolean }) {
                   marginBottom: 24,
                 }}
               >
-                <Icon name="leaf" color={c.green} size={24} />
-                <T bold style={{ color: c.green, fontSize: 13 }}>
+                <Icon name="leaf" color={c.ink} size={24} />
+                <T bold style={{ color: c.ink, fontSize: 13 }}>
                   A little less waiting.
                 </T>
-                <T style={{ color: c.green, fontSize: 11, lineHeight: 18 }}>
+                <T style={{ color: c.ink, fontSize: 11, lineHeight: 18 }}>
                   A little more time for you. Pre-order your next break.
                 </T>
               </View>
@@ -237,7 +272,14 @@ export function Shell({ admin = false }: { admin?: boolean }) {
         </View>
       )}
 
-      <View style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
+      <View
+        style={{
+          flex: 1,
+          minWidth: 0,
+          minHeight: 0,
+          backgroundColor: studentHome ? c.cream : c.white,
+        }}
+      >
         <View
           style={{
             height: hasSidebar ? 80 : 68,
@@ -245,36 +287,74 @@ export function Shell({ admin = false }: { admin?: boolean }) {
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: 12,
+            gap: mobileHome ? 8 : 12,
             borderBottomWidth: 1,
             borderColor: c.line,
             backgroundColor: c.white,
           }}
         >
-          {hasSidebar ? (
-            <View style={[s.row, { flex: 1, minWidth: 0 }]}>
+          {hasSidebar || mobileHome ? (
+            <View style={[s.row, { flex: 1, minWidth: 0, gap: mobileHome ? 6 : 12 }]}>
+              {mobileHome && (
+                <View
+                  accessible
+                  accessibilityRole="image"
+                  accessibilityLabel="Campusbite"
+                  style={{
+                    width: 32,
+                    height: 34,
+                    borderRadius: 10,
+                    backgroundColor: c.lime,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Icon name="silverware-fork-knife" color={c.ink} size={18} />
+                </View>
+              )}
               <View
                 style={{
-                  width: 36,
-                  height: 36,
+                  width: mobileHome ? 24 : 36,
+                  height: mobileHome ? 24 : 36,
                   borderRadius: 12,
-                  backgroundColor: c.peach,
+                  backgroundColor: mobileHome ? c.greenLight : c.softAccent,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
                 <Icon
                   name={admin ? 'storefront-outline' : 'map-marker-outline'}
-                  color={c.orange}
-                  size={20}
+                  color={mobileHome ? c.green : c.orange}
+                  size={mobileHome ? 16 : 20}
                 />
               </View>
-              <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-                <T muted style={{ fontSize: 9 }}>
-                  {admin ? 'MANAGEMENT PORTAL' : 'YOUR PICKUP SPOT'}
+              <View style={{ flex: 1, minWidth: 0, gap: mobileHome ? 2 : 4 }}>
+                <T
+                  muted
+                  style={{
+                    fontSize: 9,
+                    color: c.muted,
+                  }}
+                >
+                  {mobileHome
+                    ? 'Pickup location'
+                    : admin
+                      ? 'MANAGEMENT PORTAL'
+                      : 'YOUR PICKUP SPOT'}
                 </T>
-                <T bold numberOfLines={1} style={{ fontSize: 13 }}>
-                  {data?.settings.name ?? 'Campus Canteen'}
+                <T
+                  bold
+                  numberOfLines={mobileHome ? 2 : 1}
+                  style={{
+                    fontSize: mobileHome ? (width < 360 ? 11 : 12) : 14,
+                    lineHeight: mobileHome ? 16 : undefined,
+                    color: c.ink,
+                  }}
+                >
+                  {(studentHome &&
+                    (mobileHome ? data?.settings.name : data?.settings.pickup_location)) ||
+                    data?.settings.name ||
+                    'Campus Canteen'}
                 </T>
               </View>
             </View>
@@ -287,12 +367,7 @@ export function Shell({ admin = false }: { admin?: boolean }) {
                 {todayLabel()}
               </T>
             )}
-            <IconButton
-              icon="bell-outline"
-              label="View order updates"
-              onPress={() => go(admin ? '/admin/orders' : '/orders')}
-              style={{ borderWidth: 1, borderColor: c.line, borderRadius: 13 }}
-            />
+            <NotificationCenter key={user.id} user={user} />
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="View profile"
@@ -301,7 +376,7 @@ export function Shell({ admin = false }: { admin?: boolean }) {
             >
               <View
                 style={{
-                  backgroundColor: '#E9E7DB',
+                  backgroundColor: c.greenLight,
                   width: 40,
                   height: 40,
                   borderRadius: 14,
@@ -309,7 +384,7 @@ export function Shell({ admin = false }: { admin?: boolean }) {
                   alignItems: 'center',
                 }}
               >
-                <T bold style={{ color: '#76765C', fontSize: 12 }}>
+                <T bold style={{ color: c.ink, fontSize: 12 }}>
                   {user.full_name
                     .split(' ')
                     .slice(0, 2)
@@ -332,7 +407,9 @@ export function Shell({ admin = false }: { admin?: boolean }) {
         </View>
 
         <View style={{ flex: 1, minWidth: 0, minHeight: 0 }}>
-          <Slot />
+          <Reveal identity={path} style={{ flex: 1, minHeight: 0 }}>
+            <Slot />
+          </Reveal>
         </View>
 
         {!hasSidebar && (
@@ -403,6 +480,8 @@ export function Page({
   footer?: React.ReactNode;
   refreshControl?: ScrollViewProps['refreshControl'];
 }>) {
+  const c = useColors();
+
   const { pagePadding, hasSidebar } = useLayout();
   return (
     <View style={{ flex: 1, minWidth: 0, minHeight: 0 }}>

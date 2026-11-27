@@ -3,13 +3,14 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 're
 import { Image } from 'expo-image';
 import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors as c, fonts } from '@/constants/theme';
+import { fonts } from '@/constants/theme';
+import { useColors } from '@/contexts/appearance';
 import { useLayout } from '@/hooks/use-layout';
 import { Brand } from './shell';
 import { IconButton, T } from './ui';
 
 const foodBackground = require('../../assets/auth/food-background.jpg');
-export const authPaper = '#FFFDFA';
+export const authPaper = '#FFFFFF';
 
 export function AuthLayout({
   children,
@@ -17,6 +18,9 @@ export function AuthLayout({
   backLabel,
   register = false,
 }: React.PropsWithChildren<{ onBack: () => void; backLabel: string; register?: boolean }>) {
+  const c = useColors();
+  const styles = useComponentStyles();
+
   const { width, isPhone } = useLayout();
   const insets = useSafeAreaInsets();
   const wide = width >= 1000;
@@ -36,7 +40,7 @@ export function AuthLayout({
             style={[StyleSheet.absoluteFill, { opacity: 0.18 }]}
             accessible={false}
           />
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: '#F5EDE29E' }]} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: c.white + '9E' }]} />
         </View>
       )}
       <ScrollView
@@ -75,7 +79,7 @@ export function AuthLayout({
               height: wide ? undefined : (width < 380 ? 190 : 220) + photoTopInset,
               minHeight: wide ? 690 : undefined,
               overflow: 'hidden',
-              backgroundColor: '#414331',
+              backgroundColor: c.ink,
             }}
           >
             <Image
@@ -96,9 +100,9 @@ export function AuthLayout({
             >
               <Defs>
                 <LinearGradient id={shadeId} x1="0" y1="0" x2="0" y2="1">
-                  <Stop offset="0" stopColor="#172015" stopOpacity="0.12" />
-                  <Stop offset="0.4" stopColor="#172015" stopOpacity={wide ? 0.2 : 0.08} />
-                  <Stop offset="1" stopColor="#172015" stopOpacity={wide ? 0.9 : 0.2} />
+                  <Stop offset="0" stopColor={c.ink} stopOpacity="0.12" />
+                  <Stop offset="0.4" stopColor={c.ink} stopOpacity={wide ? 0.2 : 0.08} />
+                  <Stop offset="1" stopColor={c.ink} stopOpacity={wide ? 0.9 : 0.2} />
                 </LinearGradient>
               </Defs>
               <Rect width="100" height="100" fill={`url(#${shadeId})`} />
@@ -183,39 +187,46 @@ export function AuthLayout({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F3EDE3' },
-  panel: {
-    width: '100%',
-    overflow: 'hidden',
-    backgroundColor: authPaper,
-    boxShadow: '0px 22px 75px rgba(58, 43, 25, 0.16)',
-  },
-  brandBadge: { padding: 12, borderRadius: 18, backgroundColor: '#FFFDFAF2' },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: authPaper,
-    boxShadow: '0px 2px 10px rgba(36, 43, 36, 0.12)',
-  },
-  story: { position: 'absolute', left: 36, right: 48, bottom: 44 },
-  storyRule: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#FFB67F',
-    marginBottom: 22,
-  },
-  storyTitle: {
-    fontFamily: fonts.display,
-    fontSize: 49,
-    lineHeight: 58,
-    letterSpacing: -1.9,
-    color: c.white,
-  },
-  storyBody: { color: '#FFF5E9', fontSize: 14, lineHeight: 23, marginTop: 20, maxWidth: 330 },
-  storyFootnote: { color: '#E8D5BF', fontSize: 10, lineHeight: 17, marginTop: 30 },
-  sideCurve: { position: 'absolute', top: 0, bottom: 0, right: -1 },
-  bottomCurve: { position: 'absolute', bottom: -1, left: 0, right: 0 },
-});
+function useComponentStyles() {
+  const c = useColors();
+  return React.useMemo(
+    () =>
+      StyleSheet.create({
+        root: { flex: 1, backgroundColor: c.white },
+        panel: {
+          width: '100%',
+          overflow: 'hidden',
+          backgroundColor: authPaper,
+          boxShadow: `0px 22px 75px ${c.ink}29`,
+        },
+        brandBadge: { padding: 12, borderRadius: 18, backgroundColor: c.white + 'F2' },
+        backButton: {
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          backgroundColor: authPaper,
+          boxShadow: `0px 2px 10px ${c.ink}1F`,
+        },
+        story: { position: 'absolute', left: 36, right: 48, bottom: 44 },
+        storyRule: {
+          width: 40,
+          height: 4,
+          borderRadius: 2,
+          backgroundColor: c.peach,
+          marginBottom: 22,
+        },
+        storyTitle: {
+          fontFamily: fonts.display,
+          fontSize: 49,
+          lineHeight: 58,
+          letterSpacing: -1.9,
+          color: c.white,
+        },
+        storyBody: { color: c.white, fontSize: 14, lineHeight: 23, marginTop: 20, maxWidth: 330 },
+        storyFootnote: { color: c.greenLight, fontSize: 10, lineHeight: 17, marginTop: 30 },
+        sideCurve: { position: 'absolute', top: 0, bottom: 0, right: -1 },
+        bottomCurve: { position: 'absolute', bottom: -1, left: 0, right: 0 },
+      }),
+    [c],
+  );
+}

@@ -6,8 +6,9 @@ import type { Order, Snapshot, Status } from '@/types';
 import { useAuth, useToast } from '@/contexts/app';
 import { transitionOrder } from '@/services/repository';
 import { errorMessage, formatDate, money, statuses, time } from '@/utils/domain';
-import { colors as c, fonts } from '@/constants/theme';
-import { Button, Icon, Input, StatusBadge, T, s } from './ui';
+import { fonts } from '@/constants/theme';
+import { useColors } from '@/contexts/appearance';
+import { Button, Icon, Input, StatusBadge, T, useStyles } from './ui';
 import { useLayout } from '@/hooks/use-layout';
 
 export function OrderDetail({
@@ -19,6 +20,9 @@ export function OrderDetail({
   data: Snapshot;
   admin?: boolean;
 }) {
+  const c = useColors();
+  const s = useStyles();
+
   const { user } = useAuth();
   const { isPhone } = useLayout();
   const toast = useToast();
@@ -108,7 +112,7 @@ export function OrderDetail({
                         index < step ? 'check' : index === step ? 'circle-small' : 'circle-outline'
                       }
                       size={15}
-                      color={done ? c.white : '#B4B7AD'}
+                      color={done ? c.white : c.muted}
                     />
                   </View>
                   {index < 4 && (
@@ -194,7 +198,7 @@ export function OrderDetail({
       {!admin && !['Cancelled', 'Completed'].includes(order.status) && (
         <View
           style={{
-            backgroundColor: '#F8F7F1',
+            backgroundColor: c.greenLight,
             padding: 23,
             borderRadius: 14,
             marginTop: 23,
@@ -202,7 +206,7 @@ export function OrderDetail({
             gap: 9,
             borderStyle: 'dashed',
             borderWidth: 1,
-            borderColor: '#D9D9CA',
+            borderColor: c.line,
           }}
         >
           <T muted style={{ fontSize: 9, letterSpacing: 2 }}>

@@ -1,8 +1,10 @@
+import { MotionPressable as Pressable, Reveal } from '@/components/motion';
 import React, { useDeferredValue, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth, useCart, useSnapshot, useToast } from '@/contexts/app';
-import { colors as c, fonts } from '@/constants/theme';
+import { fonts } from '@/constants/theme';
+import { useColors } from '@/contexts/appearance';
 import {
   cartTotal,
   dayKey,
@@ -15,7 +17,7 @@ import {
   upcomingSlotsOnDay,
   validSlots,
 } from '@/utils/domain';
-import type { DailyMenu, Snapshot } from '@/types';
+import type { Category, DailyMenu, Snapshot } from '@/types';
 import {
   Button,
   Empty,
@@ -29,21 +31,27 @@ import {
   Sheet,
   StatusBadge,
   T,
-  s,
+  useStyles,
 } from './ui';
 import { Page } from './shell';
 import { useLayout } from '@/hooks/use-layout';
 import { MealCard } from './meal-card';
+import { IngredientView } from './ingredient-view';
 import { FeaturedBanner } from './featured-banner';
+import { PageHeading } from './page-heading';
+import { useCartMotion } from '@/contexts/cart-motion';
 
 export function BagPanel({ data, compact = false }: { data: Snapshot; compact?: boolean }) {
+  const c = useColors();
+  const s = useStyles();
+
   const { lines, setQuantity } = useCart();
   return (
     <View style={[s.card, { padding: compact ? 18 : 24 }]}>
       <View style={[s.row, { justifyContent: 'space-between' }]}>
         <T style={s.h2}>Your bag</T>
-        <View style={{ padding: 7, backgroundColor: c.peach, borderRadius: 9 }}>
-          <T bold style={{ color: c.orange, fontSize: 11 }}>
+        <View style={{ padding: 7, backgroundColor: c.softAccent, borderRadius: 9 }}>
+          <T bold style={{ color: c.ink, fontSize: 11 }}>
             {lines.reduce((n, l) => n + l.quantity, 0)} items
           </T>
         </View>
@@ -71,7 +79,7 @@ export function BagPanel({ data, compact = false }: { data: Snapshot; compact?: 
                   <View
                     style={[s.row, { justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }]}
                   >
-                    <T bold style={{ color: c.orange, fontSize: 12 }}>
+                    <T bold style={{ color: c.ink, fontSize: 12 }}>
                       {money((meal?.price ?? 0) * line.quantity)}
                     </T>
                     <Quantity
@@ -92,12 +100,12 @@ export function BagPanel({ data, compact = false }: { data: Snapshot; compact?: 
               width: 68,
               height: 68,
               borderRadius: 24,
-              backgroundColor: '#F6F5EF',
+              backgroundColor: c.peach,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Icon name="shopping-outline" size={30} color="#B9B9A6" />
+            <Icon name="shopping-outline" size={30} color={c.ink} />
           </View>
           <T bold style={{ fontSize: 13 }}>
             A good meal starts here
@@ -118,7 +126,7 @@ export function BagPanel({ data, compact = false }: { data: Snapshot; compact?: 
         <T muted style={{ fontSize: 12 }}>
           Pickup fee
         </T>
-        <T style={{ fontSize: 11, color: c.green }}>Always free</T>
+        <T style={{ fontSize: 11, color: c.ink }}>Always free</T>
       </View>
       <View style={s.divider} />
       <View style={[s.row, { justifyContent: 'space-between', marginBottom: 18 }]}>
@@ -139,18 +147,96 @@ export function BagPanel({ data, compact = false }: { data: Snapshot; compact?: 
     </View>
   );
 }
-export function Catalog({ home = false }: { home?: boolean }) {
-  const { isPhone, contentWidth, fontScale } = useLayout();
+function MealCategories({ categories }: { categories: Category[] }) {
+  const c = useColors();
+  const s = useStyles();
+
+  const { width, fontScale } = useLayout();
+  if (!categories.length) return null;
+  return (
+    <View style={{ marginBottom: 24, gap: 8 }}>
+      <PageHeading
+        title="Meal categories"
+        compact
+        style={{ marginBottom: 8 }}
+        action={
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="View all meals"
+            onPress={() => router.push('/menu')}
+            style={[s.row, { minHeight: 44, gap: 2 }]}
+          >
+            <T style={{ color: c.ink, fontSize: 10 }}>View full menu</T>
+            <Icon name="arrow-right" size={16} color={c.ink} />
+          </Pressable>
+        }
+      />
+      <View
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          rowGap: 10,
+        }}
+      >
+        {categories.map((cat) => (
+          <Pressable
+            key={cat.id}
+            accessibilityRole="link"
+            accessibilityLabel={cat.name}
+            onPress={() => router.push({ pathname: '/menu', params: { category: cat.id } })}
+            style={({ pressed }) => [
+              s.row,
+              {
+                width: width / fontScale < 320 ? '100%' : '48.7%',
+                minHeight: 51,
+                padding: 8,
+                gap: 7,
+                borderRadius: 13,
+                borderWidth: 1,
+                backgroundColor: pressed ? c.greenLight : c.white,
+                borderColor: c.line,
+              },
+            ]}
+          >
+            <View style={{ backgroundColor: c.greenLight, padding: 5, borderRadius: 9 }}>
+              <Icon name={cat.icon} color={c.green} size={19} />
+            </View>
+            <T bold style={{ flex: 1, fontSize: 11 }}>
+              {cat.name}
+            </T>
+            <Icon name="chevron-right" color={c.ink} size={15} />
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+export function Catalog({
+  home = false,
+  initialCategory = 'all',
+}: {
+  home?: boolean;
+  initialCategory?: string;
+}) {
+  const c = useColors();
+  const s = useStyles();
+
+  const { isPhone, hasSidebar, contentWidth, fontScale } = useLayout();
   const { user } = useAuth();
   const { data, isLoading, error, refetch, dataUpdatedAt, fetchStatus } = useSnapshot();
   const toast = useToast();
   const [refreshing, setRefreshing] = useState(false);
   const { add, lines } = useCart();
+  const { flyToCart } = useCartMotion();
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('all');
+  const [category, setCategory] = useState(initialCategory);
   const [date, setDate] = useState(dayKey());
   const [sort, setSort] = useState(0);
   const [selected, setSelected] = useState<DailyMenu | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [showIngredients, setShowIngredients] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [measuredGridWidth, setMeasuredGridWidth] = useState(0);
   const deferredSearch = useDeferredValue(search);
@@ -240,6 +326,12 @@ export function Catalog({ home = false }: { home?: boolean }) {
       : openSlots.every((slot) => slot.reserved >= slot.capacity)
         ? 'Pickup slots full'
         : 'Pickup unavailable';
+  function viewMeal(menu: DailyMenu) {
+    setShowIngredients(false);
+    setSelected(menu);
+    setDetailsOpen(true);
+    setQuantity(1);
+  }
   const selectedMeal = selected ? mealFor(selected, data) : null;
   const currentMenu = selected ? data.menus.find((m) => m.id === selected.id) : null;
   const remaining = Math.max(
@@ -249,13 +341,14 @@ export function Catalog({ home = false }: { home?: boolean }) {
   );
   return (
     <Page
+      style={home && !hasSidebar ? { paddingTop: 14 } : undefined}
       refreshControl={
         home ? (
           <RefreshControl
             refreshing={refreshing && fetchStatus !== 'paused'}
             onRefresh={refreshHome}
-            colors={[c.orangeDark]}
-            tintColor={c.orangeDark}
+            colors={[c.ink]}
+            tintColor={c.ink}
           />
         ) : undefined
       }
@@ -268,37 +361,55 @@ export function Catalog({ home = false }: { home?: boolean }) {
         }}
       >
         <View style={{ flex: 1, minWidth: 0 }}>
-          <View
-            style={[s.row, { justifyContent: 'space-between', marginBottom: 22, flexWrap: 'wrap' }]}
-          >
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <T muted style={{ fontSize: 12, marginBottom: 6 }}>
-                Hey {user?.full_name.split(' ')[0]}, let’s eat something good 👋
-              </T>
-              <T style={[s.h1, { fontSize: isPhone ? 26 : 32, lineHeight: isPhone ? 35 : 41 }]}>
-                {home ? 'What are you craving today?' : 'Fresh picks. Happy breaks.'}
-              </T>
-            </View>
-            {gridWidth > 700 && (
-              <View
-                style={[
-                  s.row,
-                  {
-                    gap: 5,
-                    padding: 9,
-                    backgroundColor: data.settings.accepting_orders ? c.greenLight : c.peach,
-                    borderRadius: 8,
-                  },
-                ]}
-              >
-                <View style={{ height: 5, width: 5, backgroundColor: c.green, borderRadius: 4 }} />
-                <T style={{ fontSize: 10, color: c.green }}>
-                  {data.settings.accepting_orders ? 'Accepting pre-orders' : 'Pre-orders paused'}
-                </T>
-              </View>
-            )}
-          </View>
-          {home && <FeaturedBanner meals={data.meals} onExplore={() => router.push('/menu')} />}
+          {home ? (
+            !search.trim() && (
+              <FeaturedBanner
+                meals={data.meals.filter((meal) =>
+                  data.menus.some(
+                    (menu) =>
+                      menu.meal_id === meal.id && menu.service_date === date && menu.is_available,
+                  ),
+                )}
+                onExplore={() => router.push('/menu')}
+                onView={(meal) => {
+                  const menu = data.menus.find(
+                    (item) =>
+                      item.meal_id === meal.id && item.service_date === date && item.is_available,
+                  );
+                  if (menu) viewMeal(menu);
+                }}
+              />
+            )
+          ) : (
+            <PageHeading
+              eyebrow={`Hey ${user?.full_name.split(' ')[0]}, let’s eat something good 👋`}
+              title="Fresh picks. Happy breaks."
+              action={
+                gridWidth > 700 && (
+                  <View
+                    style={[
+                      s.row,
+                      {
+                        gap: 5,
+                        padding: 9,
+                        backgroundColor: data.settings.accepting_orders ? c.greenLight : c.peach,
+                        borderRadius: 8,
+                      },
+                    ]}
+                  >
+                    <View
+                      style={{ height: 5, width: 5, backgroundColor: c.green, borderRadius: 4 }}
+                    />
+                    <T style={{ fontSize: 10, color: c.green }}>
+                      {data.settings.accepting_orders
+                        ? 'Accepting pre-orders'
+                        : 'Pre-orders paused'}
+                    </T>
+                  </View>
+                )
+              }
+            />
+          )}
           {active && (
             <Pressable
               accessibilityRole="button"
@@ -316,7 +427,7 @@ export function Catalog({ home = false }: { home?: boolean }) {
             >
               <Icon
                 name={active.status === 'Ready for Pickup' ? 'bell-ring-outline' : 'chef-hat'}
-                color={c.orange}
+                color={c.ink}
               />
               <View style={{ flex: 1 }}>
                 <T bold style={{ fontSize: 12 }}>
@@ -331,30 +442,41 @@ export function Catalog({ home = false }: { home?: boolean }) {
               <StatusBadge status={active.status} />
             </Pressable>
           )}
-          <Search value={search} onChangeText={setSearch} />
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8, paddingVertical: 19 }}
-          >
-            <Pill
-              selected={category === 'all'}
-              onPress={() => setCategory('all')}
-              icon="silverware-fork-knife"
-            >
-              All meals
-            </Pill>
-            {data.categories.map((cat) => (
-              <Pill
-                key={cat.id}
-                selected={category === cat.id}
-                onPress={() => setCategory(cat.id)}
-                icon={cat.icon}
+          {home ? (
+            !search.trim() && <MealCategories categories={data.categories} />
+          ) : (
+            <>
+              <Search value={search} onChangeText={setSearch} />
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 8, paddingVertical: 19 }}
               >
-                {cat.name}
-              </Pill>
-            ))}
-          </ScrollView>
+                <Pill
+                  selected={category === 'all'}
+                  onPress={() => setCategory('all')}
+                  icon="silverware-fork-knife"
+                >
+                  All meals
+                </Pill>
+                {data.categories.map((cat) => (
+                  <Pill
+                    key={cat.id}
+                    selected={category === cat.id}
+                    onPress={() => setCategory(cat.id)}
+                    icon={cat.icon}
+                  >
+                    {cat.name}
+                  </Pill>
+                ))}
+              </ScrollView>
+            </>
+          )}
+          {home && (
+            <View style={{ marginBottom: 18 }}>
+              <Search placeholder="Search for a meal" value={search} onChangeText={setSearch} />
+            </View>
+          )}
           <View
             style={[
               s.row,
@@ -362,9 +484,21 @@ export function Catalog({ home = false }: { home?: boolean }) {
             ]}
           >
             <View>
-              <T style={s.h2}>{home ? 'Made fresh, loved on campus' : 'The campus menu'}</T>
+              <T style={s.h2}>
+                {home
+                  ? search.trim()
+                    ? 'Search results'
+                    : 'What are you craving today?'
+                  : 'The campus menu'}
+              </T>
               <T muted style={{ fontSize: 10, marginTop: 5 }}>
-                {menus.length} delicious reasons to take a break
+                {home && !data.settings.accepting_orders ? 'Pre-orders paused · ' : ''}
+                {menus.length}{' '}
+                {home
+                  ? menus.length === 1
+                    ? 'meal'
+                    : 'meals'
+                  : 'delicious reasons to take a break'}
               </T>
             </View>
             <Pressable
@@ -373,7 +507,7 @@ export function Catalog({ home = false }: { home?: boolean }) {
               style={[s.row, { gap: 4, minHeight: 44, paddingHorizontal: 6 }]}
             >
               <Icon name="sort-variant" size={16} color={c.muted} />
-              <T style={{ fontSize: 10, color: '#686D62' }}>
+              <T style={{ fontSize: 10, color: c.muted }}>
                 {
                   ['Popular picks', 'Price: low to high', 'Price: high to low', 'Quickest first'][
                     sort
@@ -432,11 +566,10 @@ export function Catalog({ home = false }: { home?: boolean }) {
                     inBag={lines.find((line) => line.daily_menu_id === menu.id)?.quantity ?? 0}
                     acceptingOrders={data.settings.accepting_orders}
                     pickupIssue={availableMenus.has(menu.id) ? null : pickupIssue}
-                    onView={() => {
-                      setSelected(menu);
-                      setQuantity(1);
+                    onView={() => viewMeal(menu)}
+                    onAdd={(from) => {
+                      if (add(menu)) flyToCart(meal.image_url, from);
                     }}
-                    onAdd={() => add(menu)}
                   />
                 );
               })}
@@ -454,18 +587,18 @@ export function Catalog({ home = false }: { home?: boolean }) {
             <BagPanel data={data} compact />
             <View style={{ borderRadius: 17, backgroundColor: c.greenLight, padding: 22, gap: 11 }}>
               <View style={[s.row, { gap: 9 }]}>
-                <Icon name="shopping-outline" color={c.green} size={23} />
-                <T bold style={{ fontSize: 14, color: '#4F6741' }}>
+                <Icon name="shopping-outline" color={c.ink} size={23} />
+                <T bold style={{ fontSize: 14, color: c.ink }}>
                   A better kind of takeaway.
                 </T>
               </View>
-              <T style={{ color: '#829174', fontSize: 11, lineHeight: 19 }}>
+              <T style={{ color: c.ink, fontSize: 11, lineHeight: 19 }}>
                 Order between classes. Pick up at the counter. Get back to what matters.
               </T>
-              <View style={{ height: 1, backgroundColor: '#DBE4D1', marginVertical: 3 }} />
+              <View style={{ height: 1, backgroundColor: c.line, marginVertical: 3 }} />
               <View style={s.row}>
-                <Icon name="map-marker-outline" color={c.green} size={17} />
-                <T style={{ color: '#6D7D62', fontSize: 10, flex: 1 }}>
+                <Icon name="map-marker-outline" color={c.ink} size={17} />
+                <T style={{ color: c.ink, fontSize: 10, flex: 1 }}>
                   {data.settings.pickup_location}
                 </T>
               </View>
@@ -477,11 +610,19 @@ export function Catalog({ home = false }: { home?: boolean }) {
         )}
       </View>
       <Sheet
-        visible={!!selected}
-        onClose={() => setSelected(null)}
-        title="A closer look"
+        visible={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        title={showIngredients ? 'Ingredients' : 'A closer look'}
         footer={
-          selectedMeal && currentMenu ? (
+          showIngredients && selectedMeal ? (
+            <Button
+              icon="arrow-left"
+              style={{ backgroundColor: c.teal, borderColor: c.teal, borderRadius: 14 }}
+              onPress={() => setShowIngredients(false)}
+            >
+              Back to meal
+            </Button>
+          ) : selectedMeal && currentMenu ? (
             <View style={{ gap: 14 }}>
               <View style={[s.row, { justifyContent: 'space-between' }]}>
                 <T bold>Quantity</T>
@@ -497,9 +638,14 @@ export function Catalog({ home = false }: { home?: boolean }) {
                   remaining < 1 ||
                   !validSlots(data, [{ daily_menu_id: currentMenu.id, quantity }]).length
                 }
-                onPress={() => {
-                  add(currentMenu, quantity);
-                  setSelected(null);
+                onPress={(event) => {
+                  if (add(currentMenu, quantity)) {
+                    flyToCart(selectedMeal.image_url, {
+                      x: event.nativeEvent.pageX,
+                      y: event.nativeEvent.pageY,
+                    });
+                    setDetailsOpen(false);
+                  }
                 }}
                 icon="shopping-outline"
               >
@@ -509,33 +655,52 @@ export function Catalog({ home = false }: { home?: boolean }) {
           ) : undefined
         }
       >
-        {selectedMeal && currentMenu && (
-          <>
-            <FoodImage
-              uri={selectedMeal.image_url}
-              style={{ height: isPhone ? 180 : 230, width: '100%', borderRadius: 16 }}
-            />
-            <T style={[s.h1, { fontSize: 25, lineHeight: 34, marginTop: 20 }]}>
-              {selectedMeal.name}
-            </T>
-            <T
-              style={{ color: c.orange, fontSize: 24, fontFamily: fonts.bold, marginVertical: 10 }}
-            >
-              {money(selectedMeal.price)}
-            </T>
-            <T muted style={{ lineHeight: 23 }}>
-              {selectedMeal.description}
-            </T>
-            <View style={[s.row, { marginVertical: 18, flexWrap: 'wrap' }]}>
-              <Icon name="clock-outline" color={c.orange} />
-              <T>{selectedMeal.prep_minutes} min preparation</T>
-              <T muted>· {remaining} available</T>
-            </View>
-            <T muted style={{ fontSize: 12, marginBottom: 20 }}>
-              {formatDate(currentMenu.service_date)} ·{' '}
-              {data.categories.find((cat) => cat.id === selectedMeal.category_id)?.name}
-            </T>
-          </>
+        {selectedMeal && showIngredients ? (
+          <IngredientView meal={selectedMeal} />
+        ) : (
+          selectedMeal &&
+          currentMenu && (
+            <Reveal>
+              <FoodImage
+                uri={selectedMeal.image_url}
+                style={{ height: isPhone ? 180 : 230, width: '100%', borderRadius: 16 }}
+              />
+              <T style={[s.h1, { color: c.ink, fontSize: 25, lineHeight: 34, marginTop: 20 }]}>
+                {selectedMeal.name}
+              </T>
+              <T
+                style={{
+                  color: c.ink,
+                  fontSize: 24,
+                  fontFamily: fonts.bold,
+                  marginVertical: 10,
+                }}
+              >
+                {money(selectedMeal.price)}
+              </T>
+              <T muted style={{ lineHeight: 23 }}>
+                {selectedMeal.description}
+              </T>
+              <Button
+                small
+                secondary
+                icon="layers-outline"
+                style={{ alignSelf: 'flex-start', marginTop: 12 }}
+                onPress={() => setShowIngredients(true)}
+              >
+                See ingredients
+              </Button>
+              <View style={[s.row, { marginVertical: 18, flexWrap: 'wrap' }]}>
+                <Icon name="clock-outline" color={c.ink} />
+                <T>{selectedMeal.prep_minutes} min preparation</T>
+                <T muted>· {remaining} available</T>
+              </View>
+              <T muted style={{ fontSize: 12, marginBottom: 20 }}>
+                {formatDate(currentMenu.service_date)} ·{' '}
+                {data.categories.find((cat) => cat.id === selectedMeal.category_id)?.name}
+              </T>
+            </Reveal>
+          )
         )}
       </Sheet>
     </Page>

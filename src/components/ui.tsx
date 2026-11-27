@@ -1,19 +1,14 @@
+import { MotionPressable as Pressable, useReveal } from '@/components/motion';
 import React from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import type { StyleProp, TextInputProps, ViewStyle } from 'react-native';
-import { Modal, Portal } from 'react-native-paper';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import type { GestureResponderEvent, StyleProp, TextInputProps, ViewStyle } from 'react-native';
+import { Portal } from 'react-native-paper';
+import { AppModal as Modal } from './app-modal';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors as c, fonts } from '@/constants/theme';
+import { fonts, type ColorPalette } from '@/constants/theme';
+import { useColors } from '@/contexts/appearance';
 import { foodImageSource } from '@/constants/food-images';
 import type { Status } from '@/types';
 import { useLayout } from '@/hooks/use-layout';
@@ -24,6 +19,7 @@ export function T({
   bold,
   ...props
 }: React.ComponentProps<typeof Text> & { muted?: boolean; bold?: boolean }) {
+  const c = useColors();
   return (
     <Text
       {...props}
@@ -40,16 +36,9 @@ export function T({
     </Text>
   );
 }
-export function Icon({
-  name,
-  size = 22,
-  color = c.ink,
-}: {
-  name: string;
-  size?: number;
-  color?: string;
-}) {
-  return <MaterialCommunityIcons name={name as any} size={size} color={color} />;
+export function Icon({ name, size = 22, color }: { name: string; size?: number; color?: string }) {
+  const c = useColors();
+  return <MaterialCommunityIcons name={name as any} size={size} color={color ?? c.ink} />;
 }
 export function Button({
   children,
@@ -62,7 +51,7 @@ export function Button({
   small,
 }: {
   children: React.ReactNode;
-  onPress: () => void;
+  onPress: (event: GestureResponderEvent) => void;
   secondary?: boolean;
   disabled?: boolean;
   loading?: boolean;
@@ -70,6 +59,8 @@ export function Button({
   style?: StyleProp<ViewStyle>;
   small?: boolean;
 }) {
+  const c = useColors();
+  const s = useStyles();
   return (
     <Pressable
       accessibilityLabel={React.Children.toArray(children)
@@ -117,7 +108,7 @@ export function IconButton({
   icon,
   onPress,
   label,
-  color = c.ink,
+  color,
   style,
   disabled,
 }: {
@@ -128,6 +119,7 @@ export function IconButton({
   style?: StyleProp<ViewStyle>;
   disabled?: boolean;
 }) {
+  const c = useColors();
   return (
     <Pressable
       disabled={disabled}
@@ -147,7 +139,7 @@ export function IconButton({
         { minWidth: 44, minHeight: 44 },
       ]}
     >
-      <Icon name={icon} color={color} size={20} />
+      <Icon name={icon} color={color ?? c.ink} size={20} />
     </Pressable>
   );
 }
@@ -162,6 +154,8 @@ export function Pill({
   onPress?: () => void;
   icon?: string;
 }) {
+  const c = useColors();
+  const s = useStyles();
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : undefined}
@@ -188,6 +182,8 @@ export function Input({
   style,
   ...props
 }: TextInputProps & { label?: string; error?: string }) {
+  const c = useColors();
+  const s = useStyles();
   const { isPhone } = useLayout();
   return (
     <View style={{ gap: 7, marginBottom: 15 }}>
@@ -220,6 +216,8 @@ export function Search({
   onChangeText: (v: string) => void;
   placeholder?: string;
 }) {
+  const c = useColors();
+  const s = useStyles();
   const { isPhone } = useLayout();
   return (
     <View style={s.search}>
@@ -254,6 +252,8 @@ export function Quantity({
   onChange: (q: number) => void;
   max?: number;
 }) {
+  const c = useColors();
+  const s = useStyles();
   return (
     <View style={s.quantity}>
       <IconButton
@@ -277,6 +277,7 @@ export function Quantity({
   );
 }
 export function StatusBadge({ status }: { status: Status }) {
+  const c = useColors();
   const color =
     status === 'Cancelled'
       ? c.red
@@ -313,8 +314,11 @@ export function Sheet({
   title: string;
   footer?: React.ReactNode;
 }>) {
+  const c = useColors();
+  const s = useStyles();
   const { width, height, isPhone } = useLayout();
   const insets = useSafeAreaInsets();
+  const reveal = useReveal(visible);
   return (
     <Portal>
       <Modal
@@ -322,6 +326,14 @@ export function Sheet({
         onDismiss={onClose}
         style={isPhone ? { justifyContent: 'flex-end', marginVertical: 0 } : undefined}
         contentContainerStyle={{
+          transform: [
+            {
+              translateY: reveal.interpolate({
+                inputRange: [0, 1],
+                outputRange: [isPhone ? 28 : 12, 0],
+              }),
+            },
+          ],
           backgroundColor: c.white,
           padding: isPhone ? 20 : 28,
           paddingBottom: isPhone ? Math.max(insets.bottom, 20) : 28,
@@ -338,6 +350,7 @@ export function Sheet({
           <IconButton icon="close" label="Close dialog" onPress={onClose} />
         </View>
         <ScrollView
+          key={title}
           keyboardShouldPersistTaps="handled"
           automaticallyAdjustKeyboardInsets
           keyboardDismissMode="on-drag"
@@ -361,6 +374,7 @@ export function Empty({
   text,
   children,
 }: React.PropsWithChildren<{ icon?: string; title: string; text: string }>) {
+  const c = useColors();
   const { isPhone } = useLayout();
   return (
     <View style={{ alignItems: 'center', padding: isPhone ? 20 : 36, gap: 13 }}>
@@ -397,6 +411,7 @@ export function ErrorState({ message, retry }: { message: string; retry: () => v
   );
 }
 export function FoodImage({ uri, style }: { uri: string; style?: StyleProp<ViewStyle> }) {
+  const c = useColors();
   const [failedUri, setFailedUri] = React.useState<string | null>(null);
   return failedUri === uri ? (
     <View
@@ -418,70 +433,76 @@ export function FoodImage({ uri, style }: { uri: string; style?: StyleProp<ViewS
     />
   );
 }
-export const s = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  h1: {
-    fontFamily: fonts.display,
-    fontSize: 30,
-    lineHeight: 39,
-    letterSpacing: -0.8,
-    color: c.ink,
-  },
-  h2: { fontFamily: fonts.display, fontSize: 20, lineHeight: 28, letterSpacing: -0.4 },
-  card: {
-    backgroundColor: c.white,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: c.line,
-    padding: 20,
-  },
-  button: {
-    borderRadius: 12,
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    paddingHorizontal: 15,
-    paddingVertical: 11,
-    borderRadius: 12,
-    borderWidth: 1,
-    minHeight: 44,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: c.line,
-    borderRadius: 11,
-    minHeight: 48,
-    paddingHorizontal: 14,
-    fontFamily: fonts.regular,
-    fontSize: 14,
-    color: c.ink,
-    backgroundColor: '#FCFCFA',
-  },
-  search: {
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'center',
-    backgroundColor: c.white,
-    borderWidth: 1,
-    borderColor: c.line,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    minHeight: 47,
-  },
-  quantity: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: c.line,
-    backgroundColor: '#FAFAF7',
-  },
-  divider: { height: 1, backgroundColor: c.line, marginVertical: 18 },
-});
+const makeStyles = (c: ColorPalette) =>
+  StyleSheet.create({
+    row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    h1: {
+      fontFamily: fonts.display,
+      fontSize: 30,
+      lineHeight: 39,
+      letterSpacing: -0.8,
+      color: c.ink,
+    },
+    h2: { fontFamily: fonts.display, fontSize: 20, lineHeight: 28, letterSpacing: -0.4 },
+    card: {
+      backgroundColor: c.white,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: c.line,
+      padding: 20,
+    },
+    button: {
+      borderRadius: 12,
+      flexDirection: 'row',
+      gap: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    pill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      paddingHorizontal: 15,
+      paddingVertical: 11,
+      borderRadius: 12,
+      borderWidth: 1,
+      minHeight: 44,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: c.line,
+      borderRadius: 11,
+      minHeight: 48,
+      paddingHorizontal: 14,
+      fontFamily: fonts.regular,
+      fontSize: 14,
+      color: c.ink,
+      backgroundColor: c.white,
+    },
+    search: {
+      flexDirection: 'row',
+      gap: 10,
+      alignItems: 'center',
+      backgroundColor: c.white,
+      borderWidth: 1,
+      borderColor: c.line,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      minHeight: 47,
+    },
+    quantity: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: c.line,
+      backgroundColor: c.white,
+    },
+    divider: { height: 1, backgroundColor: c.line, marginVertical: 18 },
+  });
+
+export function useStyles() {
+  const colors = useColors();
+  return React.useMemo(() => makeStyles(colors), [colors]);
+}

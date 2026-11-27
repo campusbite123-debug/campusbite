@@ -1,8 +1,10 @@
+import { MotionPressable as Pressable } from '@/components/motion';
 import React, { useEffect } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Portal } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors as c, fonts } from '@/constants/theme';
+import { fonts } from '@/constants/theme';
+import { useColors } from '@/contexts/appearance';
 import { Icon, IconButton, T } from './ui';
 import { useLayout } from '@/hooks/use-layout';
 
@@ -21,6 +23,9 @@ export function AppToast({
   notice: ToastNotice | null;
   onDismiss: (id: number) => void;
 }) {
+  const c = useColors();
+  const styles = useComponentStyles();
+
   const { width, hasSidebar } = useLayout();
   const insets = useSafeAreaInsets();
   useEffect(() => {
@@ -31,7 +36,7 @@ export function AppToast({
 
   if (!notice) return null;
   const error = notice.tone === 'error';
-  const accent = error ? c.red : c.orangeDark;
+  const accent = error ? c.red : notice.tone === 'success' ? c.green : c.orangeDark;
   const icon =
     notice.icon ??
     (error ? 'alert-circle-outline' : notice.tone === 'success' ? 'check' : 'bell-outline');
@@ -51,7 +56,9 @@ export function AppToast({
             },
           ]}
         >
-          <View style={[styles.icon, error && { backgroundColor: '#FFF0EC' }]}>
+          <View
+            style={[styles.icon, notice.tone === 'success' && { backgroundColor: c.greenLight }]}
+          >
             <Icon name={icon} color={accent} size={23} />
           </View>
           <View
@@ -81,7 +88,7 @@ export function AppToast({
           <IconButton
             icon="close"
             label="Dismiss notification"
-            color="#85877F"
+            color={c.muted}
             onPress={() => onDismiss(notice.id)}
             style={styles.close}
           />
@@ -91,42 +98,49 @@ export function AppToast({
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    position: 'absolute',
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    padding: 16,
-    paddingRight: 12,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderLeftWidth: 4,
-    borderColor: '#F1DFCF',
-    backgroundColor: '#FFFDFA',
-    boxShadow: '0px 8px 28px rgba(36, 43, 36, 0.14)',
-  },
-  icon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: c.peach,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: { fontSize: 14, lineHeight: 20, color: c.ink },
-  message: { fontSize: 12, lineHeight: 18, color: '#74766C' },
-  action: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 7,
-    minHeight: 34,
-    paddingHorizontal: 11,
-    marginTop: 5,
-    backgroundColor: c.peach,
-    borderRadius: 9,
-  },
-  actionLabel: { fontFamily: fonts.bold, fontSize: 11 },
-  close: { width: 30, height: 30, marginTop: -5, marginRight: -4 },
-});
+function useComponentStyles() {
+  const c = useColors();
+  return React.useMemo(
+    () =>
+      StyleSheet.create({
+        card: {
+          position: 'absolute',
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          gap: 12,
+          padding: 16,
+          paddingRight: 12,
+          borderRadius: 18,
+          borderWidth: 1,
+          borderLeftWidth: 4,
+          borderColor: c.line,
+          backgroundColor: c.white,
+          boxShadow: `0px 8px 28px ${c.ink}24`,
+        },
+        icon: {
+          width: 42,
+          height: 42,
+          borderRadius: 14,
+          backgroundColor: c.peach,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        title: { fontSize: 14, lineHeight: 20, color: c.ink },
+        message: { fontSize: 12, lineHeight: 18, color: c.muted },
+        action: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          alignSelf: 'flex-start',
+          gap: 7,
+          minHeight: 34,
+          paddingHorizontal: 11,
+          marginTop: 5,
+          backgroundColor: c.peach,
+          borderRadius: 9,
+        },
+        actionLabel: { fontFamily: fonts.bold, fontSize: 11 },
+        close: { width: 30, height: 30, marginTop: -5, marginRight: -4 },
+      }),
+    [c],
+  );
+}

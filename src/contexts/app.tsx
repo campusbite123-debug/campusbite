@@ -12,6 +12,7 @@ import { errorMessage, registrationSchema } from '@/utils/domain';
 import type { CartLine, DailyMenu, SessionUser } from '@/types';
 import { AppToast, type ToastNotice, type ToastOptions } from '@/components/app-toast';
 import { AuthLoading } from '@/components/auth-loading';
+import { CartMotionProvider } from './cart-motion';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 10000 }, mutations: { retry: false } },
@@ -31,7 +32,7 @@ const AuthContext = createContext<AuthContextValue>(null!);
 const ToastContext = createContext<(message: string, options?: ToastOptions) => void>(() => {});
 const CartContext = createContext<{
   lines: CartLine[];
-  add: (menu: DailyMenu, quantity?: number) => void;
+  add: (menu: DailyMenu, quantity?: number) => boolean;
   setQuantity: (id: string, quantity: number) => void;
   clear: () => void;
 }>(null!);
@@ -293,7 +294,7 @@ function UserCartProvider({ children }: React.PropsWithChildren) {
         title: 'Check your bag',
         tone: 'error',
       });
-      return;
+      return false;
     }
     setLines((old) => [
       ...old.filter((l) => l.daily_menu_id !== menu.id),
@@ -305,6 +306,7 @@ function UserCartProvider({ children }: React.PropsWithChildren) {
       icon: 'shopping-outline',
       action: { label: 'View bag', onPress: () => router.push('/cart') },
     });
+    return true;
   };
   return (
     <CartContext.Provider
@@ -341,7 +343,9 @@ export function Providers({ children }: React.PropsWithChildren) {
         <AuthProvider>
           <DataProvider>
             <CartProvider>
-              <Portal.Host>{children}</Portal.Host>
+              <CartMotionProvider>
+                <Portal.Host>{children}</Portal.Host>
+              </CartMotionProvider>
             </CartProvider>
           </DataProvider>
         </AuthProvider>

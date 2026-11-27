@@ -8,8 +8,8 @@ const size = 1024;
 const scale = 2;
 const markScale = 0.94;
 const markInset = (size * (1 - markScale)) / 2;
-const cream = [255, 247, 231];
-const orange = [245, 107, 40];
+const white = [255, 255, 255];
+const forest = [36, 81, 61];
 const plate = { x: 548, y: 512, radius: 246, stroke: 108, opening: (46 * Math.PI) / 180 };
 const fork = [
   { x: 492, y: 348, width: 28, height: 96, radius: 14 },
@@ -61,9 +61,9 @@ async function main() {
   await fs.mkdir(brandDir, { recursive: true });
 
   // A plate-shaped C and a fork, kept within Android's adaptive-icon safe area.
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="#FFF7E7">
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="#FFFFFF">
   <g transform="translate(${markInset} ${markInset}) scale(${markScale})">
-  <path d="M ${capX.toFixed(3)} ${(plate.y - capOffsetY).toFixed(3)} A ${plate.radius} ${plate.radius} 0 1 0 ${capX.toFixed(3)} ${(plate.y + capOffsetY).toFixed(3)}" fill="none" stroke="#FFF7E7" stroke-width="${plate.stroke}" stroke-linecap="round"/>
+  <path d="M ${capX.toFixed(3)} ${(plate.y - capOffsetY).toFixed(3)} A ${plate.radius} ${plate.radius} 0 1 0 ${capX.toFixed(3)} ${(plate.y + capOffsetY).toFixed(3)}" fill="none" stroke="#FFFFFF" stroke-width="${plate.stroke}" stroke-linecap="round"/>
 ${fork.map((rect) => `  <rect x="${rect.x}" y="${rect.y}" width="${rect.width}" height="${rect.height}" rx="${rect.radius}"/>`).join('\n')}
   </g>
 </svg>
@@ -84,8 +84,8 @@ ${fork.map((rect) => `  <rect x="${rect.x}" y="${rect.y}" width="${rect.width}" 
 
   const background = new Jimp(size, size);
   const backgroundPixels = background.bitmap.data;
-  const top = [255, 137, 59];
-  const bottom = [232, 79, 25];
+  const top = [36, 81, 61];
+  const bottom = [20, 61, 49];
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const blend = (x * 0.35 + y * 0.65) / (size - 1);
@@ -99,14 +99,14 @@ ${fork.map((rect) => `  <rect x="${rect.x}" y="${rect.y}" width="${rect.width}" 
     }
   }
 
-  const foreground = tint(mask, cream);
+  const foreground = tint(mask, white);
   const icon = background.clone().composite(foreground, 0, 0);
   await Promise.all([
     icon.writeAsync(path.join(imageDir, 'icon.png')),
     background.writeAsync(path.join(imageDir, 'android-icon-background.png')),
     foreground.writeAsync(path.join(imageDir, 'android-icon-foreground.png')),
     tint(mask, [255, 255, 255]).writeAsync(path.join(imageDir, 'android-icon-monochrome.png')),
-    tint(mask, orange).writeAsync(path.join(imageDir, 'splash-icon.png')),
+    tint(mask, forest).writeAsync(path.join(imageDir, 'splash-icon.png')),
     icon.clone().resize(64, 64, Jimp.RESIZE_BICUBIC).writeAsync(path.join(imageDir, 'favicon.png')),
   ]);
   console.log(

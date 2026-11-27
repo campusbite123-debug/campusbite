@@ -56,6 +56,7 @@ export function createSeed(): Snapshot {
     {
       id: 'adobo',
       name: 'Chicken Adobo with Rice',
+      ingredients: ['Chicken', 'Soy sauce', 'Vinegar', 'Garlic', 'Bay leaves', 'Steamed rice'],
       description:
         'The campus comfort classic. Tender chicken slowly simmered in soy sauce, vinegar, garlic and bay leaves, served with fluffy steamed rice.',
       category_id: 'rice',
@@ -68,6 +69,7 @@ export function createSeed(): Snapshot {
     {
       id: 'sisig',
       name: 'Pork Sisig with Rice',
+      ingredients: ['Pork', 'Onions', 'Calamansi', 'Steamed rice'],
       description:
         'Sizzling, savory chopped pork with onions, calamansi and a little kick. A generous serving with steamed rice.',
       category_id: 'rice',
@@ -80,6 +82,7 @@ export function createSeed(): Snapshot {
     {
       id: 'chicken',
       name: 'Fried Chicken with Rice',
+      ingredients: ['Fried chicken', 'House gravy', 'Steamed rice'],
       description:
         'Golden, crispy chicken with our house gravy and a warm serving of steamed rice. Freshly cooked for your break.',
       category_id: 'lunch',
@@ -92,6 +95,7 @@ export function createSeed(): Snapshot {
     {
       id: 'noodles',
       name: 'Pancit Canton',
+      ingredients: ['Egg noodles', 'Vegetables', 'House sauce', 'Calamansi'],
       description:
         'Stir-fried egg noodles tossed with colorful vegetables and a savory house sauce. Finished with calamansi.',
       category_id: 'other',
@@ -104,6 +108,7 @@ export function createSeed(): Snapshot {
     {
       id: 'burger',
       name: 'Classic Campus Burger',
+      ingredients: ['Sesame bun', 'Signature sauce', 'Lettuce', 'Tomato', 'Beef patty'],
       description:
         'A juicy beef patty, crisp lettuce, tomato and our signature sauce in a toasted sesame bun.',
       category_id: 'snacks',
@@ -116,6 +121,7 @@ export function createSeed(): Snapshot {
     {
       id: 'fries',
       name: 'French Fries',
+      ingredients: ['Potato', 'Salt', 'Tomato ketchup'],
       description:
         'Crisp golden potato fries, lightly salted and served with tomato ketchup. Your perfect study snack.',
       category_id: 'snacks',
@@ -128,6 +134,7 @@ export function createSeed(): Snapshot {
     {
       id: 'tea',
       name: 'House Iced Tea',
+      ingredients: ['Brewed tea', 'Ice'],
       description:
         'Freshly brewed tea with a refreshing citrus finish. Served chilled over ice in a 16 oz cup.',
       category_id: 'beverages',
@@ -140,6 +147,7 @@ export function createSeed(): Snapshot {
     {
       id: 'water',
       name: 'Bottled Water',
+      ingredients: ['Purified water'],
       description: 'Stay refreshed with a chilled 500 ml bottle of purified drinking water.',
       category_id: 'beverages',
       price: 2000,

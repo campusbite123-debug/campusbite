@@ -1,11 +1,15 @@
 import React from 'react';
 import { ActivityIndicator, Modal, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors as c, fonts } from '@/constants/theme';
+import { fonts } from '@/constants/theme';
+import { useColors } from '@/contexts/appearance';
 import { T } from './ui';
 import { BrandMark } from './brand-mark';
 
 export function AuthLoading({ action }: { action: 'login' | 'logout' | null }) {
+  const c = useColors();
+  const styles = useComponentStyles();
+
   const insets = useSafeAreaInsets();
   if (!action) return null;
   const signingIn = action === 'login';
@@ -53,23 +57,36 @@ export function AuthLoading({ action }: { action: 'login' | 'logout' | null }) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: c.cream,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brand: {
-    width: 64,
-    height: 68,
-    borderRadius: 22,
-    backgroundColor: c.orange,
-    alignItems: 'center',
-    justifyContent: 'center',
-    transform: [{ rotate: '-5deg' }],
-  },
-  wordmark: { fontFamily: fonts.display, fontSize: 27, letterSpacing: -1, marginTop: 18 },
-  title: { fontFamily: fonts.display, fontSize: 24, textAlign: 'center' },
-  description: { color: c.muted, fontSize: 14, lineHeight: 22, textAlign: 'center', marginTop: 10 },
-});
+function useComponentStyles() {
+  const c = useColors();
+  return React.useMemo(
+    () =>
+      StyleSheet.create({
+        screen: {
+          flex: 1,
+          backgroundColor: c.cream,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        brand: {
+          width: 64,
+          height: 68,
+          borderRadius: 22,
+          backgroundColor: c.orange,
+          alignItems: 'center',
+          justifyContent: 'center',
+          transform: [{ rotate: '-5deg' }],
+        },
+        wordmark: { fontFamily: fonts.display, fontSize: 27, letterSpacing: -1, marginTop: 18 },
+        title: { fontFamily: fonts.display, fontSize: 24, textAlign: 'center' },
+        description: {
+          color: c.muted,
+          fontSize: 14,
+          lineHeight: 22,
+          textAlign: 'center',
+          marginTop: 10,
+        },
+      }),
+    [c],
+  );
+}

@@ -2,10 +2,14 @@ import React, { useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth, useToast } from '@/contexts/app';
+import { useColors } from '@/contexts/appearance';
 import { supabase } from '@/services/supabase';
-import { Button, Input, T, s } from '@/components/ui';
+import { Button, Input, T, useStyles } from '@/components/ui';
+import { PageHeading } from '@/components/page-heading';
 import { errorMessage } from '@/utils/domain';
 export default function ResetPassword() {
+  const c = useColors();
+  const s = useStyles();
   const { user, finishRecovery } = useAuth();
   const toast = useToast();
   const [password, setPassword] = useState('');
@@ -15,13 +19,13 @@ export default function ResetPassword() {
   return (
     <View style={{ flex: 1, justifyContent: 'center', padding: 28 }}>
       <View style={[s.card, { width: '100%', maxWidth: 440, alignSelf: 'center' }]}>
-        <T style={[s.h1, { marginBottom: 25 }]}>A fresh start.</T>
-        <T muted style={{ marginBottom: 20 }}>
-          Open the recovery link from your email, then choose a new password.
-        </T>
+        <PageHeading
+          title="A fresh start."
+          subtitle="Open the recovery link from your email, then choose a new password."
+        />
         <Input label="New password" secureTextEntry value={password} onChangeText={setPassword} />
         <Input label="Confirm password" secureTextEntry value={confirm} onChangeText={setConfirm} />
-        {!!error && <T style={{ color: '#C4493B', marginBottom: 20 }}>{error}</T>}
+        {!!error && <T style={{ color: c.red, marginBottom: 20 }}>{error}</T>}
         <Button
           disabled={!user}
           loading={busy}

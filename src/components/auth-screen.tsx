@@ -1,5 +1,6 @@
+import { MotionPressable as Pressable } from '@/components/motion';
 import React, { useState, useLayoutEffect } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Redirect, router, useIsFocused } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,7 +9,8 @@ import * as Linking from 'expo-linking';
 import { useAuth, useToast } from '@/contexts/app';
 import { configurationError, supabase } from '@/services/supabase';
 import { errorMessage, registrationSchema } from '@/utils/domain';
-import { colors as c, fonts } from '@/constants/theme';
+import { fonts } from '@/constants/theme';
+import { useColors } from '@/contexts/appearance';
 import { Button, T } from './ui';
 import { AuthLayout } from './auth-layout';
 import { AuthField } from './auth-field';
@@ -24,6 +26,9 @@ export function AuthScreen({
   register?: boolean;
   forgot?: boolean;
 }) {
+  const c = useColors();
+  const styles = useComponentStyles();
+
   const auth = useAuth();
   const focused = useIsFocused();
   useLayoutEffect(() => {
@@ -192,7 +197,7 @@ export function AuthScreen({
         }}
         style={styles.accountLink}
       >
-        <T style={{ color: '#7E8175', fontSize: 12, textAlign: 'center', lineHeight: 20 }}>
+        <T style={{ color: c.muted, fontSize: 12, textAlign: 'center', lineHeight: 20 }}>
           {register || forgot ? 'Back to sign in' : 'New to campusbite?'}{' '}
           <T bold style={{ color: c.orangeDark, fontSize: 12 }}>
             {!register && !forgot ? 'Create an account' : ''}
@@ -200,7 +205,7 @@ export function AuthScreen({
         </T>
       </Pressable>
       <View style={styles.footnote}>
-        <T style={{ color: '#96978B', fontSize: 10, textAlign: 'center', lineHeight: 17 }}>
+        <T style={{ color: c.muted, fontSize: 10, textAlign: 'center', lineHeight: 17 }}>
           Your campus account. Your daily favorites.{'\n'}Sign in to access your account.
         </T>
       </View>
@@ -208,37 +213,58 @@ export function AuthScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  intro: { alignItems: 'center', marginBottom: 28 },
-  eyebrow: {
-    backgroundColor: '#FFF0E4',
-    borderRadius: 20,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-  },
-  eyebrowText: { fontFamily: fonts.semibold, fontSize: 8, letterSpacing: 1.3, color: c.orangeDark },
-  heading: {
-    fontFamily: fonts.display,
-    fontSize: 32,
-    lineHeight: 41,
-    letterSpacing: -1,
-    textAlign: 'center',
-    marginTop: 15,
-  },
-  description: {
-    color: '#8D9083',
-    fontSize: 13,
-    lineHeight: 21,
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  recoveryLink: {
-    alignSelf: 'flex-end',
-    minHeight: 44,
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  submit: { borderRadius: 28, minHeight: 52, boxShadow: '0px 5px 15px rgba(245, 107, 40, 0.16)' },
-  accountLink: { alignItems: 'center', justifyContent: 'center', minHeight: 44, marginTop: 16 },
-  footnote: { borderTopWidth: 1, borderColor: '#F0ECE5', marginTop: 25, paddingTop: 21 },
-});
+function useComponentStyles() {
+  const c = useColors();
+  return React.useMemo(
+    () =>
+      StyleSheet.create({
+        intro: { alignItems: 'center', marginBottom: 28 },
+        eyebrow: {
+          backgroundColor: c.peach,
+          borderRadius: 20,
+          paddingVertical: 7,
+          paddingHorizontal: 12,
+        },
+        eyebrowText: {
+          fontFamily: fonts.semibold,
+          fontSize: 8,
+          letterSpacing: 1.3,
+          color: c.orangeDark,
+        },
+        heading: {
+          fontFamily: fonts.display,
+          fontSize: 32,
+          lineHeight: 41,
+          letterSpacing: -1,
+          textAlign: 'center',
+          marginTop: 15,
+        },
+        description: {
+          color: c.muted,
+          fontSize: 13,
+          lineHeight: 21,
+          textAlign: 'center',
+          marginTop: 8,
+        },
+        recoveryLink: {
+          alignSelf: 'flex-end',
+          minHeight: 44,
+          justifyContent: 'center',
+          marginBottom: 12,
+        },
+        submit: {
+          borderRadius: 28,
+          minHeight: 52,
+          boxShadow: `0px 5px 15px ${c.orange}29`,
+        },
+        accountLink: {
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: 44,
+          marginTop: 16,
+        },
+        footnote: { borderTopWidth: 1, borderColor: c.line, marginTop: 25, paddingTop: 21 },
+      }),
+    [c],
+  );
+}

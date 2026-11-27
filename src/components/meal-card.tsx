@@ -1,10 +1,13 @@
+import { MotionPressable as Pressable } from '@/components/motion';
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { colors as c, fonts } from '@/constants/theme';
+import { StyleSheet, View } from 'react-native';
+import { fonts } from '@/constants/theme';
+import { useColors } from '@/contexts/appearance';
 import { useLayout } from '@/hooks/use-layout';
 import type { DailyMenu, Meal } from '@/types';
 import { money } from '@/utils/domain';
 import { FoodImage, Icon, T } from './ui';
+import type { CartPoint } from '@/contexts/cart-motion';
 
 export function MealCard({
   meal,
@@ -25,8 +28,11 @@ export function MealCard({
   acceptingOrders: boolean;
   pickupIssue: string | null;
   onView: () => void;
-  onAdd: () => void;
+  onAdd: (from: CartPoint) => void;
 }) {
+  const c = useColors();
+  const styles = useComponentStyles();
+
   const { fontScale } = useLayout();
   const roomy = width >= 240;
   const soldOut = menu.quantity <= 0;
@@ -40,10 +46,10 @@ export function MealCard({
   const statusColor = soldOut
     ? c.red
     : !acceptingOrders || pickupIssue
-      ? '#7C8077'
+      ? c.muted
       : menu.quantity <= menu.low_stock_threshold
         ? c.orangeDark
-        : '#53763E';
+        : c.green;
   const addLabel = soldOut
     ? 'Sold out'
     : !acceptingOrders
@@ -83,7 +89,7 @@ export function MealCard({
             </View>
           )}
           <View style={styles.prep}>
-            <Icon name="clock-outline" size={12} color="#5C6356" />
+            <Icon name="clock-outline" size={12} color={c.muted} />
             <T style={styles.prepText}>{meal.prep_minutes} min</T>
           </View>
         </View>
@@ -132,123 +138,135 @@ export function MealCard({
           accessibilityLabel={`Add ${meal.name} to bag`}
           accessibilityHint={inBag > 0 ? `${inBag} already in your bag.` : undefined}
           disabled={disabled}
-          onPress={onAdd}
+          onPress={(event) => onAdd({ x: event.nativeEvent.pageX, y: event.nativeEvent.pageY })}
           style={({ pressed }) => [
             styles.add,
             {
-              backgroundColor: disabled ? '#F0F0EA' : c.orange,
+              backgroundColor: disabled ? c.line : c.orange,
               opacity: pressed ? 0.8 : 1,
             },
           ]}
         >
           {!disabled && <Icon name="plus" size={16} color={c.white} />}
           {atLimit && !soldOut && acceptingOrders && !pickupIssue && (
-            <Icon name="check" size={15} color="#72786B" />
+            <Icon name="check" size={15} color={c.muted} />
           )}
-          <T style={[styles.addText, disabled && { color: '#72786B' }]}>{addLabel}</T>
+          <T style={[styles.addText, disabled && { color: c.muted }]}>{addLabel}</T>
         </Pressable>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    padding: 8,
-    borderRadius: 23,
-    borderWidth: 1,
-    borderColor: '#EDE9E1',
-    backgroundColor: c.white,
-    boxShadow: '0px 3px 14px rgba(36, 43, 36, 0.045)',
-  },
-  photo: { width: '100%', borderRadius: 16, overflow: 'hidden', backgroundColor: c.line },
-  favorite: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 7,
-    paddingVertical: 5,
-    borderRadius: 8,
-    backgroundColor: '#FFFCF5',
-  },
-  favoriteText: { fontFamily: fonts.semibold, color: c.orangeDark, fontSize: 9, lineHeight: 12 },
-  inBag: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 5,
-    paddingHorizontal: 7,
-    borderRadius: 8,
-    backgroundColor: c.orange,
-  },
-  inBagText: { fontFamily: fonts.bold, fontSize: 9, lineHeight: 12, color: c.white },
-  prep: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 5,
-    paddingHorizontal: 7,
-    borderRadius: 8,
-    backgroundColor: '#FFFEF8F2',
-  },
-  prepText: { fontFamily: fonts.medium, fontSize: 10, lineHeight: 12, color: '#5C6356' },
-  details: { paddingHorizontal: 5, paddingTop: 12 },
-  category: {
-    fontFamily: fonts.medium,
-    fontSize: 9,
-    lineHeight: 13,
-    color: '#818579',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  name: {
-    fontFamily: fonts.semibold,
-    color: c.ink,
-    lineHeight: 20,
-    letterSpacing: -0.25,
-    marginTop: 5,
-  },
-  description: { fontSize: 12, lineHeight: 18, marginTop: 5 },
-  status: { flexDirection: 'row', gap: 5, alignItems: 'center', marginTop: 8 },
-  statusDot: { width: 5, height: 5, borderRadius: 3 },
-  statusText: { fontFamily: fonts.medium, fontSize: 10, lineHeight: 15, flexShrink: 1 },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 5,
-    marginTop: 12,
-    paddingTop: 12,
-    paddingBottom: 5,
-    borderTopWidth: 1,
-    borderColor: '#F1F0E9',
-  },
-  price: {
-    fontFamily: fonts.bold,
-    lineHeight: 28,
-    letterSpacing: -0.6,
-    fontVariant: ['tabular-nums'],
-    color: c.ink,
-  },
-  priceCaption: { fontSize: 9, lineHeight: 12, color: '#818579' },
-  add: {
-    minWidth: 70,
-    minHeight: 44,
-    paddingHorizontal: 10,
-    borderRadius: 13,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-  },
-  addText: { fontFamily: fonts.semibold, fontSize: 11, lineHeight: 16, color: c.white },
-});
+function useComponentStyles() {
+  const c = useColors();
+  return React.useMemo(
+    () =>
+      StyleSheet.create({
+        card: {
+          padding: 8,
+          borderRadius: 23,
+          borderWidth: 1,
+          borderColor: c.line,
+          backgroundColor: c.white,
+          boxShadow: `0px 3px 14px ${c.ink}0B`,
+        },
+        photo: { width: '100%', borderRadius: 16, overflow: 'hidden', backgroundColor: c.line },
+        favorite: {
+          position: 'absolute',
+          top: 8,
+          left: 8,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          paddingHorizontal: 7,
+          paddingVertical: 5,
+          borderRadius: 8,
+          backgroundColor: c.white,
+        },
+        favoriteText: {
+          fontFamily: fonts.semibold,
+          color: c.orangeDark,
+          fontSize: 9,
+          lineHeight: 12,
+        },
+        inBag: {
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          paddingVertical: 5,
+          paddingHorizontal: 7,
+          borderRadius: 8,
+          backgroundColor: c.orange,
+        },
+        inBagText: { fontFamily: fonts.bold, fontSize: 9, lineHeight: 12, color: c.white },
+        prep: {
+          position: 'absolute',
+          bottom: 8,
+          right: 8,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          paddingVertical: 5,
+          paddingHorizontal: 7,
+          borderRadius: 8,
+          backgroundColor: c.white,
+        },
+        prepText: { fontFamily: fonts.medium, fontSize: 10, lineHeight: 12, color: c.muted },
+        details: { paddingHorizontal: 5, paddingTop: 12 },
+        category: {
+          fontFamily: fonts.medium,
+          fontSize: 9,
+          lineHeight: 13,
+          color: c.muted,
+          letterSpacing: 0.8,
+          textTransform: 'uppercase',
+        },
+        name: {
+          fontFamily: fonts.semibold,
+          color: c.ink,
+          lineHeight: 20,
+          letterSpacing: -0.25,
+          marginTop: 5,
+        },
+        description: { fontSize: 12, lineHeight: 18, marginTop: 5 },
+        status: { flexDirection: 'row', gap: 5, alignItems: 'center', marginTop: 8 },
+        statusDot: { width: 5, height: 5, borderRadius: 3 },
+        statusText: { fontFamily: fonts.medium, fontSize: 10, lineHeight: 15, flexShrink: 1 },
+        footer: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+          marginHorizontal: 5,
+          marginTop: 12,
+          paddingTop: 12,
+          paddingBottom: 5,
+          borderTopWidth: 1,
+          borderColor: c.line,
+        },
+        price: {
+          fontFamily: fonts.bold,
+          lineHeight: 28,
+          letterSpacing: -0.6,
+          fontVariant: ['tabular-nums'],
+          color: c.ink,
+        },
+        priceCaption: { fontSize: 9, lineHeight: 12, color: c.muted },
+        add: {
+          minWidth: 70,
+          minHeight: 44,
+          paddingHorizontal: 10,
+          borderRadius: 13,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 5,
+        },
+        addText: { fontFamily: fonts.semibold, fontSize: 11, lineHeight: 16, color: c.white },
+      }),
+    [c],
+  );
+}

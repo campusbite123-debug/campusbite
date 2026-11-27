@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import { AdminHeader, DataPage, Metric, SalesChart, useAction } from '@/components/admin';
-import { Button, Empty, Input, Pill, T, s } from '@/components/ui';
-import { colors as c } from '@/constants/theme';
+import { Button, Empty, Input, Pill, T, useStyles } from '@/components/ui';
+import { useColors } from '@/contexts/appearance';
 import { collectedRevenue, csv, dayKey, formatDate, futureDay, money } from '@/utils/domain';
 import { exportCSV } from '@/services/media';
 import { useLayout } from '@/hooks/use-layout';
 export default function Analytics() {
+  const c = useColors();
+  const s = useStyles();
   const { isPhone, fontScale } = useLayout();
   const stackDates = isPhone && fontScale > 1.2;
   const { run, busy } = useAction();

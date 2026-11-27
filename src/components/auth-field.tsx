@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 import type { TextInputProps } from 'react-native';
-import { colors as c, fonts } from '@/constants/theme';
+import { fonts } from '@/constants/theme';
+import { useColors } from '@/contexts/appearance';
 import { useLayout } from '@/hooks/use-layout';
 import { Icon, IconButton, T } from './ui';
 
@@ -14,21 +15,24 @@ export function AuthField({
   onBlur,
   ...props
 }: TextInputProps & { label: string; icon: string; error?: string }) {
+  const c = useColors();
+  const styles = useComponentStyles();
+
   const { isPhone } = useLayout();
   const [focused, setFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   return (
     <View style={{ gap: 8, marginBottom: 17 }}>
       <T style={styles.label}>{label}</T>
-      <View style={[styles.field, { borderColor: error ? c.red : focused ? c.orange : '#ECE7DF' }]}>
+      <View style={[styles.field, { borderColor: error ? c.red : focused ? c.orange : c.line }]}>
         <View pointerEvents="none" aria-hidden>
-          <Icon name={icon} size={19} color={focused ? c.orangeDark : '#8B8C7E'} />
+          <Icon name={icon} size={19} color={focused ? c.orangeDark : c.muted} />
         </View>
         <TextInput
           {...props}
           accessibilityLabel={label}
           secureTextEntry={secureTextEntry && !showPassword}
-          placeholderTextColor="#929487"
+          placeholderTextColor={c.muted}
           underlineColorAndroid="transparent"
           onFocus={(event) => {
             setFocused(true);
@@ -44,7 +48,7 @@ export function AuthField({
           <IconButton
             label={`${showPassword ? 'Hide' : 'Show'} ${label.toLowerCase()}`}
             icon={showPassword ? 'eye-off-outline' : 'eye-outline'}
-            color="#8B8C7E"
+            color={c.muted}
             onPress={() => setShowPassword((shown) => !shown)}
           />
         )}
@@ -58,26 +62,33 @@ export function AuthField({
   );
 }
 
-const styles = StyleSheet.create({
-  label: { fontFamily: fonts.medium, color: '#5C6357', fontSize: 12 },
-  field: {
-    minHeight: 54,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    paddingLeft: 16,
-    paddingRight: 5,
-    backgroundColor: '#F4F1EA',
-    borderWidth: 1,
-    borderRadius: 15,
-  },
-  input: {
-    flex: 1,
-    minWidth: 0,
-    minHeight: 52,
-    paddingVertical: 14,
-    fontFamily: fonts.regular,
-    color: c.ink,
-    outlineWidth: 0,
-  },
-});
+function useComponentStyles() {
+  const c = useColors();
+  return React.useMemo(
+    () =>
+      StyleSheet.create({
+        label: { fontFamily: fonts.medium, color: c.ink, fontSize: 12 },
+        field: {
+          minHeight: 54,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 11,
+          paddingLeft: 16,
+          paddingRight: 5,
+          backgroundColor: c.white,
+          borderWidth: 1,
+          borderRadius: 15,
+        },
+        input: {
+          flex: 1,
+          minWidth: 0,
+          minHeight: 52,
+          paddingVertical: 14,
+          fontFamily: fonts.regular,
+          color: c.ink,
+          outlineWidth: 0,
+        },
+      }),
+    [c],
+  );
+}

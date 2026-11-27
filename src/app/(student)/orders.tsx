@@ -1,9 +1,11 @@
+import { MotionPressable as Pressable } from '@/components/motion';
 import React, { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSnapshot } from '@/contexts/app';
 import { errorMessage, formatDate, isActive, money, time } from '@/utils/domain';
-import { colors as c } from '@/constants/theme';
+import { useColors } from '@/contexts/appearance';
+import { PageHeading } from '@/components/page-heading';
 import { Page } from '@/components/shell';
 import { OrderDetail } from '@/components/order-detail';
 import { OrderConfirmation } from '@/components/order-confirmation';
@@ -17,9 +19,11 @@ import {
   Sheet,
   StatusBadge,
   T,
-  s,
+  useStyles,
 } from '@/components/ui';
 export default function Orders() {
+  const c = useColors();
+  const s = useStyles();
   const { data, isLoading, error, refetch } = useSnapshot();
   const params = useLocalSearchParams<{ id?: string; placed?: string }>();
   const selected = params.id ?? '';
@@ -34,13 +38,11 @@ export default function Orders() {
   const order = data.orders.find((o) => o.id === selected);
   return (
     <Page>
-      <T muted style={{ fontSize: 12, marginBottom: 7 }}>
-        FROM OUR KITCHEN TO YOUR BREAK
-      </T>
-      <T style={s.h1}>Your orders</T>
-      <T muted style={{ marginTop: 9, marginBottom: 24 }}>
-        A little anticipation makes everything taste better.
-      </T>
+      <PageHeading
+        eyebrow="FROM OUR KITCHEN TO YOUR BREAK"
+        title="Your orders"
+        subtitle="A little anticipation makes everything taste better."
+      />
       <View style={[s.row, { marginBottom: 24 }]}>
         {['Active', 'Past orders', 'All'].map((t) => (
           <Pill key={t} selected={tab === t} onPress={() => setTab(t)}>

@@ -3,7 +3,8 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { AuthLayout } from '@/components/auth-layout';
 import { Button, Icon, T } from '@/components/ui';
-import { colors as c, fonts } from '@/constants/theme';
+import { fonts, type ColorPalette } from '@/constants/theme';
+import { useColors } from '@/contexts/appearance';
 import { confirmSignupEmail } from '@/services/email-confirmation';
 import { errorMessage } from '@/utils/domain';
 
@@ -17,6 +18,8 @@ export default function ConfirmEmail() {
 }
 
 function EmailConfirmation({ token, type }: { token: string; type: string }) {
+  const c = useColors();
+  const styles = React.useMemo(() => makeStyles(c), [c]);
   const valid = Boolean(token) && type === 'email';
   const [confirmation, setConfirmation] = useState<Confirmation>(() =>
     valid
@@ -51,7 +54,7 @@ function EmailConfirmation({ token, type }: { token: string; type: string }) {
   return (
     <AuthLayout onBack={() => router.replace('/login')} backLabel="Back to sign in">
       <View style={styles.content} accessibilityLiveRegion="polite">
-        <View style={[styles.badge, { backgroundColor: success ? '#EDF3E7' : '#FFF0E5' }]}>
+        <View style={[styles.badge, { backgroundColor: success ? c.greenLight : c.peach }]}>
           {checking ? (
             <ActivityIndicator
               size="large"
@@ -62,7 +65,7 @@ function EmailConfirmation({ token, type }: { token: string; type: string }) {
             <Icon
               name={success ? 'check-circle-outline' : 'email-alert-outline'}
               size={42}
-              color={success ? '#49613D' : c.orangeDark}
+              color={success ? c.green : c.orangeDark}
             />
           )}
         </View>
@@ -97,17 +100,24 @@ function EmailConfirmation({ token, type }: { token: string; type: string }) {
   );
 }
 
-const styles = StyleSheet.create({
-  content: { alignItems: 'center', paddingVertical: 30 },
-  badge: {
-    width: 86,
-    height: 86,
-    borderRadius: 29,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 28,
-  },
-  heading: { fontFamily: fonts.display, fontSize: 30, lineHeight: 40, textAlign: 'center' },
-  description: { color: c.muted, fontSize: 14, lineHeight: 23, textAlign: 'center', marginTop: 16 },
-  footnote: { color: c.muted, fontSize: 11, lineHeight: 18, textAlign: 'center', marginTop: 22 },
-});
+const makeStyles = (c: ColorPalette) =>
+  StyleSheet.create({
+    content: { alignItems: 'center', paddingVertical: 30 },
+    badge: {
+      width: 86,
+      height: 86,
+      borderRadius: 29,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 28,
+    },
+    heading: { fontFamily: fonts.display, fontSize: 30, lineHeight: 40, textAlign: 'center' },
+    description: {
+      color: c.muted,
+      fontSize: 14,
+      lineHeight: 23,
+      textAlign: 'center',
+      marginTop: 16,
+    },
+    footnote: { color: c.muted, fontSize: 11, lineHeight: 18, textAlign: 'center', marginTop: 22 },
+  });

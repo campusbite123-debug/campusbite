@@ -5,9 +5,13 @@ import { useAuth, useToast } from '@/contexts/app';
 import { updateProfile } from '@/services/repository';
 import { enableNotifications } from '@/services/media';
 import { DataPage, useAction } from '@/components/admin';
-import { Button, Icon, Input, T, s } from '@/components/ui';
-import { colors as c } from '@/constants/theme';
+import { Button, Icon, Input, T, useStyles } from '@/components/ui';
+import { useColors } from '@/contexts/appearance';
+import { PageHeading } from '@/components/page-heading';
+import { PalettePicker } from '@/components/palette-picker';
 export default function Profile() {
+  const c = useColors();
+  const s = useStyles();
   const { user, logout, refreshUser } = useAuth();
   const toast = useToast();
   const { busy, run } = useAction();
@@ -16,10 +20,13 @@ export default function Profile() {
     <DataPage>
       {(data) => (
         <>
-          <T style={s.h1}>A little about you.</T>
-          <T muted style={{ marginTop: 10, marginBottom: 28 }}>
-            Your campus identity and the details that make pickup easy.
-          </T>
+          <PageHeading
+            title="A little about you."
+            subtitle="Your campus identity and the details that make pickup easy."
+          />
+          <View style={[s.card, { maxWidth: 600, marginBottom: 24 }]}>
+            <PalettePicker />
+          </View>
           <View style={[s.card, { maxWidth: 600 }]}>
             <View style={[s.row, { marginBottom: 25 }]}>
               <View

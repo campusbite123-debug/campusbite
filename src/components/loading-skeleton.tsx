@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors as c } from '@/constants/theme';
+import { useColors } from '@/contexts/appearance';
 import { useLayout } from '@/hooks/use-layout';
 
 type LoadingProps = {
@@ -22,6 +22,8 @@ type LoadingProps = {
 };
 
 function Bone({ style }: { style?: StyleProp<ViewStyle> }) {
+  const styles = useComponentStyles();
+
   return <View style={[styles.bone, style]} />;
 }
 
@@ -82,6 +84,9 @@ export function Loading({
   hero = true,
   label = 'Loading your canteen',
 }: LoadingProps) {
+  const c = useColors();
+  const styles = useComponentStyles();
+
   const { width, isPhone, pagePadding, contentWidth } = useLayout();
   const insets = useSafeAreaInsets();
   const [measuredWidth, setMeasuredWidth] = useState(0);
@@ -145,9 +150,9 @@ export function Loading({
               {hero && (
                 <View style={[styles.hero, { height: isPhone ? 288 : 324 }]}>
                   <View style={{ flex: 1, maxWidth: 390, gap: 14 }}>
-                    <Bone style={{ width: '55%', height: 9, backgroundColor: '#E8D8C8' }} />
-                    <Bone style={{ width: '90%', height: 25, backgroundColor: '#E8D8C8' }} />
-                    <Bone style={{ width: '70%', height: 25, backgroundColor: '#E8D8C8' }} />
+                    <Bone style={{ width: '55%', height: 9, backgroundColor: c.softAccent }} />
+                    <Bone style={{ width: '90%', height: 25, backgroundColor: c.softAccent }} />
+                    <Bone style={{ width: '70%', height: 25, backgroundColor: c.softAccent }} />
                     <Bone style={{ width: '80%', height: 10, marginTop: 3 }} />
                     <Bone style={{ width: 100, height: 37, borderRadius: 12, marginTop: 7 }} />
                   </View>
@@ -156,7 +161,7 @@ export function Loading({
                       width: isPhone ? 82 : 150,
                       aspectRatio: 1,
                       borderRadius: 100,
-                      backgroundColor: '#E8D8C8',
+                      backgroundColor: c.softAccent,
                     }}
                   />
                 </View>
@@ -246,35 +251,42 @@ export function Loading({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', backgroundColor: c.cream },
-  bone: { borderRadius: 6, backgroundColor: '#E5E5DC' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  card: {
-    backgroundColor: c.white,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: c.line,
-    overflow: 'hidden',
-  },
-  hero: {
-    padding: 22,
-    borderRadius: 22,
-    backgroundColor: '#F5EDE2',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 18,
-  },
-  search: {
-    height: 50,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: c.line,
-    backgroundColor: c.white,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 13,
-    paddingHorizontal: 16,
-  },
-});
+function useComponentStyles() {
+  const c = useColors();
+  return React.useMemo(
+    () =>
+      StyleSheet.create({
+        root: { flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', backgroundColor: c.cream },
+        bone: { borderRadius: 6, backgroundColor: c.line },
+        row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+        card: {
+          backgroundColor: c.white,
+          borderRadius: 18,
+          borderWidth: 1,
+          borderColor: c.line,
+          overflow: 'hidden',
+        },
+        hero: {
+          padding: 22,
+          borderRadius: 22,
+          backgroundColor: c.peach,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 18,
+        },
+        search: {
+          height: 50,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: c.line,
+          backgroundColor: c.white,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 13,
+          paddingHorizontal: 16,
+        },
+      }),
+    [c],
+  );
+}

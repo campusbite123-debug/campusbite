@@ -13,10 +13,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useSnapshot, useToast } from '@/contexts/app';
 import type { Snapshot } from '@/types';
 import { errorMessage, money } from '@/utils/domain';
-import { colors as c, fonts } from '@/constants/theme';
+import { fonts } from '@/constants/theme';
+import { useColors } from '@/contexts/appearance';
 import { Page } from './shell';
 import { useLayout } from '@/hooks/use-layout';
-import { ErrorState, Icon, Loading, T, s } from './ui';
+import { ErrorState, Icon, Loading, T, useStyles } from './ui';
+import { PageHeading } from './page-heading';
 export function DataPage({ children }: { children: (data: Snapshot) => React.ReactNode }) {
   const { data, error, isLoading, refetch } = useSnapshot();
   if (isLoading) return <Loading inShell variant="dashboard" label="Loading your workspace" />;
@@ -33,31 +35,8 @@ export function AdminHeader({
   subtitle: string;
   action?: React.ReactNode;
 }) {
-  const { isPhone } = useLayout();
   return (
-    <View
-      style={[
-        s.row,
-        {
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          marginBottom: 27,
-          flexDirection: isPhone ? 'column' : 'row',
-          alignItems: isPhone ? 'stretch' : 'center',
-        },
-      ]}
-    >
-      <View style={{ flexShrink: 1, minWidth: 0 }}>
-        <T muted style={{ fontSize: 10, letterSpacing: 1.4, marginBottom: 7 }}>
-          CANTEEN MANAGEMENT
-        </T>
-        <T style={[s.h1, { fontSize: isPhone ? 27 : 30 }]}>{title}</T>
-        <T muted style={{ fontSize: 13, lineHeight: 20, marginTop: 8 }}>
-          {subtitle}
-        </T>
-      </View>
-      {action}
-    </View>
+    <PageHeading title={title} subtitle={subtitle} eyebrow="CANTEEN MANAGEMENT" action={action} />
   );
 }
 export function useAction() {
@@ -101,6 +80,8 @@ export function Metric({
   accent?: boolean;
   note?: string;
 }) {
+  const c = useColors();
+  const s = useStyles();
   const { contentWidth, isPhone } = useLayout();
   return (
     <View
@@ -118,10 +99,10 @@ export function Metric({
       ]}
     >
       <View style={[s.row, { justifyContent: 'space-between' }]}>
-        <T style={{ color: accent ? '#FFE9DD' : c.muted, fontSize: 12, lineHeight: 17, flex: 1 }}>
+        <T style={{ color: accent ? c.white : c.muted, fontSize: 12, lineHeight: 17, flex: 1 }}>
           {label}
         </T>
-        <Icon name={icon} size={20} color={accent ? '#FFE4D3' : c.orange} />
+        <Icon name={icon} size={20} color={accent ? c.white : c.orange} />
       </View>
       <T
         numberOfLines={1}
@@ -138,12 +119,13 @@ export function Metric({
         {value}
       </T>
       {note && (
-        <T style={{ color: accent ? '#FFE4D3' : c.muted, fontSize: 10, marginTop: 9 }}>{note}</T>
+        <T style={{ color: accent ? c.white : c.muted, fontSize: 10, marginTop: 9 }}>{note}</T>
       )}
     </View>
   );
 }
 export function SalesChart({ series }: { series: { label: string; value: number }[] }) {
+  const c = useColors();
   const max = Math.max(10000, ...series.map((p) => p.value));
   const pts = series.map((p, i) => ({
     x: 50 + i * (470 / Math.max(1, series.length - 1)),
@@ -178,7 +160,7 @@ export function SalesChart({ series }: { series: { label: string; value: number 
         <Path d={path} fill="none" stroke={c.orange} strokeWidth="3" strokeLinejoin="round" />
         {pts.map((p, i) => (
           <React.Fragment key={i}>
-            <Circle cx={p.x} cy={p.y} r="4" fill="white" stroke={c.orange} strokeWidth="2" />
+            <Circle cx={p.x} cy={p.y} r="4" fill={c.white} stroke={c.orange} strokeWidth="2" />
             <SvgText x={p.x} y="204" fontSize="11" textAnchor="middle" fill={c.muted}>
               {series[i].label}
             </SvgText>

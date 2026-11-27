@@ -3,10 +3,12 @@ import { View } from 'react-native';
 import { useAuth } from '@/contexts/app';
 import { suspendStudent } from '@/services/repository';
 import { AdminHeader, DataPage, useAction } from '@/components/admin';
-import { Button, Empty, Input, Search, Sheet, StatusBadge, T, s } from '@/components/ui';
-import { colors as c } from '@/constants/theme';
+import { Button, Empty, Input, Search, Sheet, StatusBadge, T, useStyles } from '@/components/ui';
+import { useColors } from '@/contexts/appearance';
 import { formatDate, money } from '@/utils/domain';
 export default function Students() {
+  const c = useColors();
+  const s = useStyles();
   const { user } = useAuth();
   const { busy, run } = useAction();
   const [search, setSearch] = useState('');

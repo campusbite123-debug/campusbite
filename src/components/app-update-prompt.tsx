@@ -6,7 +6,7 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { usePathname } from 'expo-router';
 import releasesAtBuild from '../../public/app-releases.json';
 import { availableRelease, type AppRelease } from '@/utils/app-release';
-import { colors } from '@/constants/theme';
+import { useColors } from '@/contexts/appearance';
 import { Button, Sheet, T } from './ui';
 
 const manifestPath = '/app-releases.json';
@@ -16,6 +16,8 @@ const reminderKey = (release: AppRelease) =>
   `campusbite.update.${Platform.OS}.${release.version}.${release.build ?? ''}`;
 
 export function AppUpdatePrompt() {
+  const colors = useColors();
+
   const [release, setRelease] = useState<AppRelease | null>(null);
   const [opening, setOpening] = useState(false);
   const [failedLink, setFailedLink] = useState('');
